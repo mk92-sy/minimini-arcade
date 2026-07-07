@@ -6,12 +6,12 @@ export default function Home() {
     <div className="hub">
       <header className="hub__header">
         <div className="hub__logo">
+          <span className="hub__logo-text"></span>
           <span className="hub__bulbs" aria-hidden="true">
             {Array.from({ length: 7 }).map((_, i) => (
               <span key={i} style={{ "--i": i }} />
             ))}
           </span>
-          <span className="hub__logo-text">MINIMINI</span>
         </div>
         <p className="hub__eyebrow">8GAMES</p>
       </header>
