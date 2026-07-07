@@ -1,6 +1,7 @@
-@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap');
+@import url("https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap");
 
 :root {
+  --bg-void-light: #2e2947;
   --bg-void: #14122b;
   --bg-surface: #1e1b3f;
   --bg-screen: #0b0a1f;
@@ -11,9 +12,9 @@
   --text-muted: #9a95c9;
   --border-soft: rgba(245, 243, 255, 0.08);
 
-  --font-display: 'Press Start 2P', 'Courier New', monospace;
-  --font-body: 'Space Grotesk', 'Segoe UI', sans-serif;
-  --font-mono: 'IBM Plex Mono', 'Courier New', monospace;
+  --font-display: "Press Start 2P", "Courier New", monospace;
+  --font-body: "Space Grotesk", "Segoe UI", sans-serif;
+  --font-mono: "IBM Plex Mono", "Courier New", monospace;
 }
 
 * {
@@ -67,7 +68,7 @@ button {
 .hub {
   max-width: 1080px;
   margin: 0 auto;
-  padding: 40px 24px 64px;
+  padding: 0;
 }
 
 .hub--single {
@@ -81,9 +82,18 @@ button {
 /* ---------- Header / marquee logo ---------- */
 
 .hub__header {
+  position: sticky;
+  top: 20px;
+  z-index: 10;
+  padding: 20px 40px;
+  border-radius: 999px;
   display: flex;
-  justify-content: center;
-  margin-bottom: 56px;
+  justify-content: space-between;
+  align-items: center;
+  max-width: calc(100vw - 40px);
+  margin: 20px auto 56px;
+  background-color: var(--bg-void-light);
+  border-bottom: 1px solid var(--border-soft);
 }
 
 .hub__logo {
@@ -109,8 +119,13 @@ button {
 }
 
 @keyframes bulb-blink {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.15; }
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.15;
+  }
 }
 
 .hub__logo-text {
@@ -133,7 +148,6 @@ button {
   font-size: 12px;
   letter-spacing: 2px;
   color: var(--accent-arcade);
-  margin: 0 0 18px;
 }
 
 .hub__headline {
@@ -154,7 +168,8 @@ button {
 .hub__grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  gap: 22px;
+  gap: 20px;
+  padding: 0 20px;
 }
 
 .cabinet {
@@ -164,7 +179,10 @@ button {
   border: 1px solid var(--border-soft);
   border-radius: 16px 16px 10px 10px;
   overflow: hidden;
-  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+  transition:
+    transform 0.18s ease,
+    box-shadow 0.18s ease,
+    border-color 0.18s ease;
 }
 
 .cabinet:hover,
@@ -275,8 +293,13 @@ button {
 }
 
 @keyframes led-pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.35; }
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
 }
 
 /* ---------- Footer ---------- */
@@ -285,7 +308,7 @@ button {
   display: flex;
   justify-content: center;
   gap: 12px;
-  margin-top: 56px;
+  margin: 56px 0;
   font-family: var(--font-mono);
   font-size: 12px;
   color: var(--text-muted);
@@ -343,14 +366,22 @@ button {
 /* ---------- Game shell (shared by every game page) ---------- */
 
 .game-shell__nav {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  padding: 20px;
   margin-bottom: 24px;
 }
 
 .game-shell__back {
   font-family: var(--font-mono);
+  display: inline-block;
   font-size: 13px;
-  color: var(--text-muted);
-  transition: color 0.15s ease;
+  color: #fff;
+  background: #000000;
+  border: 1px solid #fff;
+  padding: 10px 18px;
+  border-radius: 8px;
 }
 
 .game-shell__back:hover {
@@ -390,7 +421,10 @@ button {
   background: var(--bg-screen);
   color: var(--tint);
   cursor: pointer;
-  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease;
 }
 
 .reaction__screen--idle {
@@ -411,8 +445,13 @@ button {
 }
 
 @keyframes reaction-ready-pulse {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(6, 214, 160, 0.5); }
-  50% { box-shadow: 0 0 0 14px rgba(6, 214, 160, 0); }
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(6, 214, 160, 0.5);
+  }
+  50% {
+    box-shadow: 0 0 0 14px rgba(6, 214, 160, 0);
+  }
 }
 
 .reaction__screen--too-soon {
@@ -423,9 +462,16 @@ button {
 }
 
 @keyframes reaction-shake {
-  0%, 100% { transform: translateX(0); }
-  25% { transform: translateX(-6px); }
-  75% { transform: translateX(6px); }
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-6px);
+  }
+  75% {
+    transform: translateX(6px);
+  }
 }
 
 .reaction__screen--result {
@@ -600,8 +646,12 @@ button {
 }
 
 @keyframes leaderboard-shimmer {
-  0% { background-position: 200% 0; }
-  100% { background-position: -200% 0; }
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
 }
 
 .leaderboard__rank {
@@ -646,35 +696,145 @@ button {
   color: var(--text-muted);
 }
 
+.share__row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.share__kakao {
+  flex-shrink: 0;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  border: none;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  cursor: pointer;
+  transition: transform 0.15s ease;
+}
+
+.share__kakao:hover:not(:disabled) {
+  transform: translateY(-2px);
+}
+
+.share__kakao:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.share__divider {
+  width: 1px;
+  height: 28px;
+  background: var(--border-soft);
+}
+
 .share__buttons {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
 }
 
-.share__button {
-  padding: 9px 14px;
-  border-radius: 999px;
-  border: 1px solid color-mix(in srgb, var(--tint) 50%, transparent);
-  background: transparent;
+.share__icon-button {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  border: 1px solid var(--border-soft);
+  background: var(--bg-void);
   color: var(--text-bright);
-  font-size: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   cursor: pointer;
-  transition: background 0.15s ease;
+  transition:
+    border-color 0.15s ease,
+    transform 0.15s ease;
 }
 
-.share__button:hover {
-  background: color-mix(in srgb, var(--tint) 16%, transparent);
+.share__icon-button:hover {
+  border-color: color-mix(in srgb, var(--tint) 60%, transparent);
+  transform: translateY(-2px);
 }
 
-.share__button--primary {
-  background: var(--tint);
-  color: #14122b;
+/* ---------- Confirm dialog (shared) ---------- */
+
+.dialog__overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(11, 10, 31, 0.72);
+  backdrop-filter: blur(2px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  z-index: 100;
+}
+
+.dialog__panel {
+  width: 100%;
+  max-width: 360px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-soft);
+  border-radius: 16px;
+  padding: 24px;
+}
+
+.dialog__title {
+  margin: 0 0 12px;
+  font-size: 17px;
   font-weight: 700;
-  border-color: transparent;
 }
 
-.share__button--primary:hover {
-  background: var(--tint);
-  opacity: 0.9;
+.dialog__message {
+  margin: 0 0 22px;
+  font-size: 14px;
+  color: var(--text-muted);
+  white-space: pre-line;
+  line-height: 1.5;
+}
+
+.dialog__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.dialog__button {
+  padding: 10px 16px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid transparent;
+}
+
+.dialog__button--ghost {
+  background: transparent;
+  border-color: var(--border-soft);
+  color: var(--text-muted);
+}
+
+.dialog__button--ghost:hover {
+  color: var(--text-bright);
+}
+
+.dialog__button--primary {
+  background: var(--tint, var(--accent-marquee));
+  color: #14122b;
+}
+
+/* ---------- Submit score: already-submitted state ---------- */
+
+.submit-score--done {
+  align-items: center;
+  text-align: center;
+}
+
+.submit-score__done-text {
+  margin: 0 0 4px;
+  font-size: 13px;
+  color: var(--text-muted);
 }

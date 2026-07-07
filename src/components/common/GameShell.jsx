@@ -1,11 +1,11 @@
-import { Link } from 'react-router-dom'
+import { Link } from "react-router-dom";
 
-export default function GameShell({ eyebrow, title, tint = '#ffb703', children }) {
+export default function GameShell({ eyebrow, title, tint = "#ffb703", children }) {
   return (
-    <div className="hub" style={{ '--tint': tint }}>
+    <div className="hub" style={{ "--tint": tint }}>
       <div className="game-shell__nav">
         <Link to="/" className="game-shell__back">
-          ← 아케이드로
+          ← 홈으로
         </Link>
       </div>
 
@@ -18,5 +18,5 @@ export default function GameShell({ eyebrow, title, tint = '#ffb703', children }
 
       <div className="game-shell__body">{children}</div>
     </div>
-  )
+  );
 }
