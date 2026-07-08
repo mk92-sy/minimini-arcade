@@ -1,18 +1,21 @@
 import { useEffect, useState } from 'react'
 import { submitScore } from '../../lib/scores.js'
 import { hasSubmittedToday, markSubmittedToday } from '../../lib/dailyLimit.js'
+import { useAuth } from '../../context/AuthContext.jsx'
 import ConfirmDialog from './ConfirmDialog.jsx'
 
 const DAILY_LIMIT_ERROR = 'DAILY_LIMIT_REACHED'
 
 /**
- * 점수 등록 폼. 게임별로 하루에 한 번만 등록할 수 있도록
+ * 점수 등록 폼. 이제 로그인한 회원만 등록할 수 있고, 닉네임은
+ * 프로필에서 자동으로 가져와요 (입력 필요 없음).
+ * - 로그아웃 상태면 로그인 유도 버튼만 보여줌 (onRequestLogin으로 모달 오픈)
  * - 등록 버튼 클릭 시 확인 다이얼로그를 띄우고
  * - 성공/서버 거부(하루 제한) 이후에는 버튼을 disabled 처리합니다.
- * 실제 하루 제한은 DB 트리거가 강제하고, 로컬 저장은 UX 편의용입니다.
+ * 실제 하루 제한은 DB 트리거(user_id 기준)가 강제하고, 로컬 저장은 UX 편의용입니다.
  */
-export default function SubmitScoreForm({ gameId, score, unit = '', onSubmitted }) {
-  const [nickname, setNickname] = useState('')
+export default function SubmitScoreForm({ gameId, score, unit = '', onRequestLogin }) {
+  const { user, nickname } = useAuth()
   const [status, setStatus] = useState('idle') // idle | confirming | submitting | done | limited | error
   const [errorMsg, setErrorMsg] = useState('')
 
@@ -22,35 +25,15 @@ export default function SubmitScoreForm({ gameId, score, unit = '', onSubmitted 
     }
   }, [gameId])
 
-  const openConfirm = (e) => {
-    e.preventDefault()
-    if (!nickname.trim()) {
-      setStatus('error')
-      setErrorMsg('닉네임을 입력해주세요.')
-      return
-    }
-    setStatus('confirming')
-  }
-
-  const handleConfirm = async () => {
-    setStatus('submitting')
-    const { error } = await submitScore(gameId, nickname.trim(), score)
-
-    if (error) {
-      const isDailyLimit = error.message?.includes(DAILY_LIMIT_ERROR)
-      markSubmittedToday(gameId) // 서버가 이미 막았으니 로컬도 오늘은 그만 시도하도록 동기화
-      setStatus(isDailyLimit ? 'limited' : 'error')
-      setErrorMsg(
-        isDailyLimit
-          ? '오늘은 이미 랭킹에 등록하셨어요. 내일 다시 도전해주세요!'
-          : '랭킹 등록에 실패했어요. Supabase 연결을 확인해주세요.',
-      )
-      return
-    }
-
-    markSubmittedToday(gameId)
-    setStatus('done')
-    onSubmitted?.()
+  if (!user) {
+    return (
+      <div className="submit-score submit-score--locked">
+        <p className="submit-score__prompt">랭킹 등록은 로그인 후 이용할 수 있어요.</p>
+        <button type="button" className="submit-score__button" onClick={onRequestLogin}>
+          로그인하기
+        </button>
+      </div>
+    )
   }
 
   if (status === 'done' || status === 'limited') {
@@ -66,31 +49,46 @@ export default function SubmitScoreForm({ gameId, score, unit = '', onSubmitted 
     )
   }
 
+  const handleConfirm = async () => {
+    setStatus('submitting')
+    const { error } = await submitScore(gameId, user.id, nickname, score)
+
+    if (error) {
+      const isDailyLimit = error.message?.includes(DAILY_LIMIT_ERROR)
+      markSubmittedToday(gameId) // 서버가 이미 막았으니 로컬도 오늘은 그만 시도하도록 동기화
+      setStatus(isDailyLimit ? 'limited' : 'error')
+      setErrorMsg(
+        isDailyLimit
+          ? '오늘은 이미 랭킹에 등록하셨어요. 내일 다시 도전해주세요!'
+          : '랭킹 등록에 실패했어요. 잠시 후 다시 시도해주세요.',
+      )
+      return
+    }
+
+    markSubmittedToday(gameId)
+    setStatus('done')
+  }
+
   return (
     <>
-      <form className="submit-score" onSubmit={openConfirm}>
+      <div className="submit-score">
         <p className="submit-score__prompt">
           <strong>
             {score}
             {unit}
           </strong>{' '}
-          기록을 랭킹에 등록할까요?
+          기록을 <strong>{nickname}</strong>(으)로 등록할까요?
         </p>
-        <div className="submit-score__row">
-          <input
-            className="submit-score__input"
-            type="text"
-            maxLength={20}
-            placeholder="닉네임"
-            value={nickname}
-            onChange={(e) => setNickname(e.target.value)}
-          />
-          <button className="submit-score__button" type="submit" disabled={status === 'submitting'}>
-            {status === 'submitting' ? '등록 중...' : '랭킹 등록'}
-          </button>
-        </div>
+        <button
+          type="button"
+          className="submit-score__button"
+          onClick={() => setStatus('confirming')}
+          disabled={status === 'submitting'}
+        >
+          {status === 'submitting' ? '등록 중...' : '랭킹 등록'}
+        </button>
         {status === 'error' && <p className="submit-score__error">{errorMsg}</p>}
-      </form>
+      </div>
 
       <ConfirmDialog
         open={status === 'confirming'}

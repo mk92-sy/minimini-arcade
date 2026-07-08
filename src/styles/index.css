@@ -1,7 +1,6 @@
-@import url("https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap");
+@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap');
 
 :root {
-  --bg-void-light: #2e2947;
   --bg-void: #14122b;
   --bg-surface: #1e1b3f;
   --bg-screen: #0b0a1f;
@@ -12,9 +11,9 @@
   --text-muted: #9a95c9;
   --border-soft: rgba(245, 243, 255, 0.08);
 
-  --font-display: "Press Start 2P", "Courier New", monospace;
-  --font-body: "Space Grotesk", "Segoe UI", sans-serif;
-  --font-mono: "IBM Plex Mono", "Courier New", monospace;
+  --font-display: 'Press Start 2P', 'Courier New', monospace;
+  --font-body: 'Space Grotesk', 'Segoe UI', sans-serif;
+  --font-mono: 'IBM Plex Mono', 'Courier New', monospace;
 }
 
 * {
@@ -68,7 +67,7 @@ button {
 .hub {
   max-width: 1080px;
   margin: 0 auto;
-  padding: 0;
+  padding: 40px 24px 64px;
 }
 
 .hub--single {
@@ -82,25 +81,16 @@ button {
 /* ---------- Header / marquee logo ---------- */
 
 .hub__header {
-  position: sticky;
-  top: 20px;
-  z-index: 10;
-  padding: 20px 40px;
-  border-radius: 999px;
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  max-width: calc(100vw - 40px);
-  margin: 20px auto 56px;
-  background-color: var(--bg-void-light);
-  border-bottom: 1px solid var(--border-soft);
+  justify-content: center;
+  margin-bottom: 56px;
 }
 
 .hub__logo {
   display: inline-flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
+  gap: 10px;
 }
 
 .hub__bulbs {
@@ -119,22 +109,16 @@ button {
 }
 
 @keyframes bulb-blink {
-  0%,
-  100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.15;
-  }
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.15; }
 }
 
 .hub__logo-text {
-  width: 90px;
-  height: 25px;
-  background-image: url("../assets/images/logo.png");
-  background-size: contain;
-  background-repeat: no-repeat;
-  background-position: center;
+  font-family: var(--font-display);
+  font-size: 15px;
+  letter-spacing: 3px;
+  color: var(--accent-marquee);
+  text-shadow: 0 0 18px rgba(255, 183, 3, 0.45);
 }
 
 /* ---------- Hero ---------- */
@@ -149,6 +133,7 @@ button {
   font-size: 12px;
   letter-spacing: 2px;
   color: var(--accent-arcade);
+  margin: 0 0 18px;
 }
 
 .hub__headline {
@@ -169,8 +154,7 @@ button {
 .hub__grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  gap: 20px;
-  padding: 0 20px;
+  gap: 22px;
 }
 
 .cabinet {
@@ -180,10 +164,7 @@ button {
   border: 1px solid var(--border-soft);
   border-radius: 16px 16px 10px 10px;
   overflow: hidden;
-  transition:
-    transform 0.18s ease,
-    box-shadow 0.18s ease,
-    border-color 0.18s ease;
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
 }
 
 .cabinet:hover,
@@ -294,13 +275,8 @@ button {
 }
 
 @keyframes led-pulse {
-  0%,
-  100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.35;
-  }
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
 }
 
 /* ---------- Footer ---------- */
@@ -309,7 +285,7 @@ button {
   display: flex;
   justify-content: center;
   gap: 12px;
-  margin: 56px 0;
+  margin-top: 56px;
   font-family: var(--font-mono);
   font-size: 12px;
   color: var(--text-muted);
@@ -367,22 +343,14 @@ button {
 /* ---------- Game shell (shared by every game page) ---------- */
 
 .game-shell__nav {
-  position: sticky;
-  top: 0;
-  z-index: 10;
-  padding: 20px;
   margin-bottom: 24px;
 }
 
 .game-shell__back {
   font-family: var(--font-mono);
-  display: inline-block;
   font-size: 13px;
-  color: #fff;
-  background: #000000;
-  border: 1px solid #fff;
-  padding: 10px 18px;
-  border-radius: 8px;
+  color: var(--text-muted);
+  transition: color 0.15s ease;
 }
 
 .game-shell__back:hover {
@@ -400,6 +368,28 @@ button {
   display: flex;
   flex-direction: column;
   gap: 28px;
+}
+
+.game-shell__body--wide {
+  max-width: 960px;
+}
+
+.game-layout {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 28px;
+  align-items: start;
+}
+
+@media (min-width: 860px) {
+  .game-layout {
+    grid-template-columns: 1fr 320px;
+  }
+
+  .game-layout__side {
+    position: sticky;
+    top: 24px;
+  }
 }
 
 /* ---------- Reaction game ---------- */
@@ -422,10 +412,7 @@ button {
   background: var(--bg-screen);
   color: var(--tint);
   cursor: pointer;
-  transition:
-    background-color 0.15s ease,
-    border-color 0.15s ease,
-    color 0.15s ease;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
 }
 
 .reaction__screen--idle {
@@ -446,13 +433,8 @@ button {
 }
 
 @keyframes reaction-ready-pulse {
-  0%,
-  100% {
-    box-shadow: 0 0 0 0 rgba(6, 214, 160, 0.5);
-  }
-  50% {
-    box-shadow: 0 0 0 14px rgba(6, 214, 160, 0);
-  }
+  0%, 100% { box-shadow: 0 0 0 0 rgba(6, 214, 160, 0.5); }
+  50% { box-shadow: 0 0 0 14px rgba(6, 214, 160, 0); }
 }
 
 .reaction__screen--too-soon {
@@ -463,16 +445,9 @@ button {
 }
 
 @keyframes reaction-shake {
-  0%,
-  100% {
-    transform: translateX(0);
-  }
-  25% {
-    transform: translateX(-6px);
-  }
-  75% {
-    transform: translateX(6px);
-  }
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-6px); }
+  75% { transform: translateX(6px); }
 }
 
 .reaction__screen--result {
@@ -614,11 +589,18 @@ button {
 }
 
 .leaderboard__title {
-  margin: 0 0 14px;
+  margin: 0 0 6px;
   font-family: var(--font-display);
   font-size: 11px;
   letter-spacing: 2px;
   color: var(--tint);
+}
+
+.leaderboard__notice {
+  margin: 0 0 14px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-muted);
 }
 
 .leaderboard__list {
@@ -647,19 +629,19 @@ button {
 }
 
 @keyframes leaderboard-shimmer {
-  0% {
-    background-position: 200% 0;
-  }
-  100% {
-    background-position: -200% 0;
-  }
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
 }
 
 .leaderboard__rank {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   font-family: var(--font-mono);
   font-weight: 700;
   color: var(--tint);
-  width: 20px;
+  width: 24px;
+  flex-shrink: 0;
 }
 
 .leaderboard__nickname {
@@ -697,42 +679,6 @@ button {
   color: var(--text-muted);
 }
 
-.share__row {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-}
-
-.share__kakao {
-  flex-shrink: 0;
-  width: 44px;
-  height: 44px;
-  border-radius: 12px;
-  border: none;
-  padding: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: transparent;
-  cursor: pointer;
-  transition: transform 0.15s ease;
-}
-
-.share__kakao:hover:not(:disabled) {
-  transform: translateY(-2px);
-}
-
-.share__kakao:disabled {
-  opacity: 0.35;
-  cursor: not-allowed;
-}
-
-.share__divider {
-  width: 1px;
-  height: 28px;
-  background: var(--border-soft);
-}
-
 .share__buttons {
   display: flex;
   flex-wrap: wrap;
@@ -750,9 +696,7 @@ button {
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition:
-    border-color 0.15s ease,
-    transform 0.15s ease;
+  transition: border-color 0.15s ease, transform 0.15s ease;
 }
 
 .share__icon-button:hover {
@@ -834,8 +778,118 @@ button {
   text-align: center;
 }
 
+.submit-score--locked {
+  align-items: center;
+  text-align: center;
+}
+
 .submit-score__done-text {
   margin: 0 0 4px;
   font-size: 13px;
   color: var(--text-muted);
+}
+
+/* ---------- Auth button (fixed, global) ---------- */
+
+.auth-button {
+  position: fixed;
+  top: 18px;
+  right: 18px;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 16px;
+  border-radius: 999px;
+  border: 1px solid var(--border-soft);
+  background: var(--bg-surface);
+  color: var(--text-bright);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  backdrop-filter: blur(6px);
+  transition: border-color 0.15s ease, transform 0.15s ease;
+}
+
+.auth-button:hover {
+  border-color: color-mix(in srgb, var(--accent-marquee) 55%, transparent);
+  transform: translateY(-1px);
+}
+
+.auth-button__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent-arcade);
+  box-shadow: 0 0 6px var(--accent-arcade);
+}
+
+.auth-button__name {
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ---------- Auth modal ---------- */
+
+.auth-modal {
+  max-width: 380px;
+}
+
+.auth-modal__providers {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 20px 0 4px;
+}
+
+.auth-modal__provider {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 12px 16px;
+  border-radius: 10px;
+  border: 1px solid var(--border-soft);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.15s ease;
+}
+
+.auth-modal__provider:hover {
+  transform: translateY(-1px);
+}
+
+.auth-modal__provider--google {
+  background: #ffffff;
+  color: #1f1f1f;
+}
+
+.auth-modal__provider--kakao {
+  background: #fee500;
+  color: #391b1b;
+  border-color: transparent;
+}
+
+.auth-modal__nickname-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 18px 0;
+}
+
+.auth-modal__nickname {
+  font-family: var(--font-mono);
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.auth-modal__edit-row {
+  display: flex;
+  gap: 8px;
+  margin: 18px 0;
 }

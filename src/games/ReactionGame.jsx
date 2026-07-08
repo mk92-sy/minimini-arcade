@@ -3,6 +3,7 @@ import GameShell from '../components/common/GameShell.jsx'
 import Leaderboard from '../components/common/Leaderboard.jsx'
 import SubmitScoreForm from '../components/common/SubmitScoreForm.jsx'
 import ShareButton from '../components/common/ShareButton.jsx'
+import { useAuth } from '../context/AuthContext.jsx'
 import { games } from '../data/games.js'
 
 const GAME_ID = 'reaction'
@@ -24,12 +25,11 @@ const SCREEN_TEXT = {
 }
 
 export default function ReactionGame() {
+  const { openAuthModal } = useAuth()
   const [phase, setPhase] = useState(PHASE.IDLE)
   const [reactionMs, setReactionMs] = useState(null)
   const [bestMs, setBestMs] = useState(null)
   const [attempts, setAttempts] = useState(0)
-  const [submitted, setSubmitted] = useState(false)
-  const [refreshKey, setRefreshKey] = useState(0)
 
   const timeoutRef = useRef(null)
   const readyAtRef = useRef(0)
@@ -44,7 +44,6 @@ export default function ReactionGame() {
   useEffect(() => clearPendingTimeout, [])
 
   const startRound = useCallback(() => {
-    setSubmitted(false)
     setReactionMs(null)
     setPhase(PHASE.WAITING)
 
@@ -82,59 +81,51 @@ export default function ReactionGame() {
     [PHASE.RESULT]: '클릭해서 재시도',
   }[phase]
 
-  return (
-    <GameShell eyebrow={`CABINET ${meta.number}`} title={meta.title} tint={meta.tint}>
-      <div className="reaction">
-        <button
-          type="button"
-          className={`reaction__screen reaction__screen--${phase}`}
-          onClick={handleScreenClick}
-        >
-          <span className="reaction__label">
-            {phase === PHASE.RESULT ? `${reactionMs} ms` : SCREEN_TEXT[phase]}
-          </span>
-          {hint && <span className="reaction__hint">{hint}</span>}
-        </button>
+  const shareText =
+    reactionMs !== null
+      ? `나는 반응속도 ${reactionMs}ms! 너도 도전해봐 ⚡`
+      : '미니 아케이드 반응속도 테스트, 너도 도전해봐 ⚡'
 
-        <div className="reaction__stats">
-          <div className="reaction__stat">
-            <span className="reaction__stat-label">이번 기록</span>
-            <span className="reaction__stat-value">{reactionMs !== null ? `${reactionMs}ms` : '-'}</span>
+  return (
+    <GameShell eyebrow={`CABINET ${meta.number}`} title={meta.title} tint={meta.tint} wide>
+      <div className="game-layout">
+        <div className="game-layout__main reaction">
+          <button
+            type="button"
+            className={`reaction__screen reaction__screen--${phase}`}
+            onClick={handleScreenClick}
+          >
+            <span className="reaction__label">
+              {phase === PHASE.RESULT ? `${reactionMs} ms` : SCREEN_TEXT[phase]}
+            </span>
+            {hint && <span className="reaction__hint">{hint}</span>}
+          </button>
+
+          <div className="reaction__stats">
+            <div className="reaction__stat">
+              <span className="reaction__stat-label">이번 기록</span>
+              <span className="reaction__stat-value">{reactionMs !== null ? `${reactionMs}ms` : '-'}</span>
+            </div>
+            <div className="reaction__stat">
+              <span className="reaction__stat-label">최고 기록</span>
+              <span className="reaction__stat-value">{bestMs !== null ? `${bestMs}ms` : '-'}</span>
+            </div>
+            <div className="reaction__stat">
+              <span className="reaction__stat-label">시도 횟수</span>
+              <span className="reaction__stat-value">{attempts}</span>
+            </div>
           </div>
-          <div className="reaction__stat">
-            <span className="reaction__stat-label">최고 기록</span>
-            <span className="reaction__stat-value">{bestMs !== null ? `${bestMs}ms` : '-'}</span>
-          </div>
-          <div className="reaction__stat">
-            <span className="reaction__stat-label">시도 횟수</span>
-            <span className="reaction__stat-value">{attempts}</span>
-          </div>
+
+          {phase === PHASE.RESULT && (
+            <SubmitScoreForm gameId={GAME_ID} score={reactionMs} unit="ms" onRequestLogin={openAuthModal} />
+          )}
+
+          <ShareButton title="반응속도 테스트 — Mini Arcade" text={shareText} />
         </div>
 
-        {phase === PHASE.RESULT && (
-          <div className="reaction__result-actions">
-            {!submitted ? (
-              <SubmitScoreForm
-                gameId={GAME_ID}
-                score={reactionMs}
-                unit="ms"
-                onSubmitted={() => {
-                  setSubmitted(true)
-                  setRefreshKey((k) => k + 1)
-                }}
-              />
-            ) : (
-              <p className="reaction__submitted">랭킹에 등록됐어요!</p>
-            )}
-
-            <ShareButton
-              title="반응속도 테스트 — Mini Arcade"
-              text={`나는 반응속도 ${reactionMs}ms! 너도 도전해봐 ⚡`}
-            />
-          </div>
-        )}
-
-        <Leaderboard gameId={GAME_ID} order="asc" unit="ms" limit={10} refreshKey={refreshKey} />
+        <div className="game-layout__side">
+          <Leaderboard gameId={GAME_ID} order="asc" unit="ms" limit={10} />
+        </div>
       </div>
     </GameShell>
   )

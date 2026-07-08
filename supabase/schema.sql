@@ -1,66 +1,101 @@
--- Mini Arcade 공통 랭킹 테이블
--- 게임이 몇 개가 되든 이 테이블 하나를 공유하고, game_id 컬럼으로 구분합니다.
--- Supabase Dashboard → SQL Editor 에서 그대로 실행하세요.
+-- Mini Arcade 공통 스키마
+-- Supabase Dashboard → SQL Editor 에서 통째로 실행하세요.
+-- 전부 idempotent(재실행 안전)하게 짜여있어서, 이미 실행했던 프로젝트에
+-- 다시 실행해도 안전합니다 (기존 데이터는 유지됨).
 
 create extension if not exists "pgcrypto";
+
+-- ─────────────────────────────────────────────────────────────
+-- profiles: 로그인한 사용자의 닉네임 저장
+-- 최초 로그인 시 프론트(src/lib/profile.js)에서 자동 생성함
+-- (랜덤문자열 10글자 + 구글이면 g, 카카오면 k)
+-- ─────────────────────────────────────────────────────────────
+
+create table if not exists public.profiles (
+  id uuid primary key references auth.users(id) on delete cascade,
+  nickname text not null unique,
+  provider text not null,
+  created_at timestamptz not null default now()
+);
+
+alter table public.profiles enable row level security;
+
+drop policy if exists "profiles_select_all" on public.profiles;
+create policy "profiles_select_all"
+  on public.profiles for select
+  using (true);
+
+drop policy if exists "profiles_insert_own" on public.profiles;
+create policy "profiles_insert_own"
+  on public.profiles for insert
+  with check (auth.uid() = id);
+
+drop policy if exists "profiles_update_own" on public.profiles;
+create policy "profiles_update_own"
+  on public.profiles for update
+  using (auth.uid() = id)
+  with check (auth.uid() = id and char_length(nickname) between 2 and 20);
+
+-- ─────────────────────────────────────────────────────────────
+-- scores: 게임별 랭킹. game_id 컬럼으로 게임을 구분해서 하나의
+-- 테이블을 모든 게임이 공유합니다. 이제 로그인한 사용자만 등록 가능.
+-- ─────────────────────────────────────────────────────────────
 
 create table if not exists public.scores (
   id uuid primary key default gen_random_uuid(),
   game_id text not null,
+  user_id uuid references auth.users(id) on delete cascade,
   nickname text not null,
   score numeric not null,
   meta jsonb not null default '{}'::jsonb,
   created_at timestamptz not null default now()
 );
 
--- 게임별 랭킹 정렬(점수순)을 빠르게 조회하기 위한 인덱스
+-- 예전 버전(IP 기반)에서 남아있을 수 있는 컬럼 정리 + 신규 컬럼 보강
+alter table public.scores add column if not exists user_id uuid references auth.users(id) on delete cascade;
+alter table public.scores drop column if exists ip_address;
+
 create index if not exists scores_game_id_score_idx
   on public.scores (game_id, score);
 
 alter table public.scores enable row level security;
 
 -- 누구나 랭킹을 조회할 수 있음 (로그인 불필요)
+drop policy if exists "scores_select_all" on public.scores;
 create policy "scores_select_all"
   on public.scores for select
   using (true);
 
--- 누구나 자신의 점수를 등록할 수 있음. 닉네임/게임ID 길이만 최소 검증.
--- update/delete 정책은 의도적으로 만들지 않음 -> RLS가 기본 차단.
-create policy "scores_insert_all"
+-- 예전 "누구나 등록 가능" 정책은 제거하고, 로그인한 사용자가
+-- 자기 자신의 user_id로만 등록할 수 있도록 변경
+drop policy if exists "scores_insert_all" on public.scores;
+drop policy if exists "scores_insert_own" on public.scores;
+create policy "scores_insert_own"
   on public.scores for insert
   with check (
-    char_length(nickname) between 1 and 20
+    auth.uid() = user_id
+    and char_length(nickname) between 1 and 20
     and char_length(game_id) between 1 and 50
   );
 
 -- ─────────────────────────────────────────────────────────────
--- 하루 1회 등록 제한 (게임별로 IP 또는 닉네임 기준, 당일 자정 기준)
--- PostgREST가 요청 헤더를 세션 설정(request.headers)으로 넘겨주는 걸 이용해서
--- 클라이언트가 별도로 IP를 보내지 않아도 서버가 직접 클라이언트 IP를 기록함.
--- ⚠️ 주의: x-forwarded-for는 이론상 조작 가능한 헤더라 완벽한 방어는 아니고,
---          닉네임 중복 체크와 함께 "가벼운 어뷰징 억제" 목적으로만 사용하세요.
+-- 하루 1회 등록 제한 (게임별로 user_id 기준, 당일 자정 기준)
+-- 로그인 기반이라 예전 IP 방식보다 훨씬 신뢰도가 높습니다.
 -- ─────────────────────────────────────────────────────────────
 
-alter table public.scores add column if not exists ip_address text;
+drop trigger if exists scores_daily_limit_trigger on public.scores;
+drop function if exists public.scores_enforce_daily_limit();
 
 create or replace function public.scores_enforce_daily_limit()
 returns trigger as $$
 declare
-  client_ip text;
   existing_count int;
 begin
-  client_ip := coalesce(
-    nullif(split_part(current_setting('request.headers', true)::json->>'x-forwarded-for', ',', 1), ''),
-    'unknown'
-  );
-
-  new.ip_address := client_ip;
-
   select count(*) into existing_count
   from public.scores
   where game_id = new.game_id
-    and created_at >= date_trunc('day', now())
-    and (ip_address = client_ip or nickname = new.nickname);
+    and user_id = new.user_id
+    and created_at >= date_trunc('day', now());
 
   if existing_count > 0 then
     raise exception 'DAILY_LIMIT_REACHED' using errcode = 'P0001';
@@ -69,8 +104,6 @@ begin
   return new;
 end;
 $$ language plpgsql security definer;
-
-drop trigger if exists scores_daily_limit_trigger on public.scores;
 
 create trigger scores_daily_limit_trigger
   before insert on public.scores
