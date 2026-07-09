@@ -6,7 +6,7 @@ const NOT_CONNECTED_ERROR = new Error(
 )
 
 /**
- * 특정 게임의 랭킹을 가져옵니다.
+ * 특정 게임의 랭킹을 가져옵니다. 한 사람의 베스트 기록만 집계합니다(get_leaderboard_top).
  * @param {string} gameId - games.js의 id (예: 'reaction')
  * @param {{ order?: 'asc' | 'desc', limit?: number }} options
  *   order: 'asc'면 점수가 낮을수록 상위 (반응속도처럼 낮을수록 좋은 게임용)
@@ -17,14 +17,34 @@ export async function fetchLeaderboard(gameId, { order = 'desc', limit = 10 } = 
     return { data: [], error: NOT_CONNECTED_ERROR }
   }
 
-  const { data, error } = await supabase
-    .from(TABLE)
-    .select('id, nickname, score, created_at')
-    .eq('game_id', gameId)
-    .order('score', { ascending: order === 'asc' })
-    .limit(Math.min(limit, 10))
+  const { data, error } = await supabase.rpc('get_leaderboard_top', {
+    p_game_id: gameId,
+    p_order: order,
+    p_limit: Math.min(limit, 10),
+  })
 
   return { data: data ?? [], error }
+}
+
+/**
+ * 로그인한 사용자의 순위/총 참가자 수를 가져옵니다.
+ * @param {string} gameId
+ * @param {string|null} userId - 비로그인이면 null (호출하지 않고 바로 null 반환)
+ * @param {'asc'|'desc'} order
+ */
+export async function fetchMyRank(gameId, userId, order = 'desc') {
+  if (!supabase || !userId) {
+    return { data: null, error: null }
+  }
+
+  const { data, error } = await supabase.rpc('get_my_rank', {
+    p_game_id: gameId,
+    p_user_id: userId,
+    p_order: order,
+  })
+
+  // returns table이라 배열로 옴; 기록이 없으면 빈 배열
+  return { data: data?.[0] ?? null, error }
 }
 
 /**

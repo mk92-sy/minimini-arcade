@@ -1,5 +1,6 @@
 import { supabase } from './supabaseClient.js'
 import { generateNickname } from './nickname.js'
+import { getDisplayByteLength, NICKNAME_MAX_BYTES, NICKNAME_MAX_BYTES_LABEL } from './nicknameValidation.js'
 
 const MAX_NICKNAME_RETRIES = 5
 
@@ -51,8 +52,11 @@ export async function updateNickname(userId, nextNickname) {
   }
 
   const trimmed = nextNickname.trim()
-  if (trimmed.length < 2 || trimmed.length > 20) {
-    return { data: null, error: new Error('닉네임은 2~20자로 입력해주세요.') }
+  if (trimmed.length === 0) {
+    return { data: null, error: new Error('닉네임을 입력해주세요.') }
+  }
+  if (getDisplayByteLength(trimmed) > NICKNAME_MAX_BYTES) {
+    return { data: null, error: new Error(`닉네임은 최대 ${NICKNAME_MAX_BYTES_LABEL}까지 입력할 수 있어요.`) }
   }
 
   const { data, error } = await supabase

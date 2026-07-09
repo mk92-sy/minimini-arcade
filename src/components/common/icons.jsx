@@ -1,3 +1,39 @@
+export function IconHeart({ filled = false, ...props }) {
+  return (
+    <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" {...props}>
+      <path
+        d="M12 20.3 4.7 13.3C2.1 10.8 2.4 6.9 5.2 4.9c2.3-1.6 5.1-1 6.8 1 1.7-2 4.5-2.6 6.8-1 2.8 2 3.1 5.9.5 8.4L12 20.3Z"
+        fill={filled ? '#EF476F' : 'none'}
+        stroke={filled ? '#EF476F' : 'currentColor'}
+        strokeWidth="2"
+        strokeLinejoin="round"
+      />
+    </svg>
+  )
+}
+
+export function IconUsers(props) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      width="18"
+      height="18"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+      {...props}
+    >
+      <circle cx="9" cy="8" r="3.2" />
+      <path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6" />
+      <path d="M15.5 4.2c1.5.4 2.5 1.8 2.5 3.3 0 1.6-1.1 3-2.6 3.4" />
+      <path d="M17 14.2c2.3.5 4 2.6 4 5.1" />
+    </svg>
+  )
+}
+
 export function IconGoogle(props) {
   return (
     <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" {...props}>

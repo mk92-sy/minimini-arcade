@@ -7,24 +7,25 @@ import ConfirmDialog from './ConfirmDialog.jsx'
 const DAILY_LIMIT_ERROR = 'DAILY_LIMIT_REACHED'
 
 /**
- * 점수 등록 폼. 이제 로그인한 회원만 등록할 수 있고, 닉네임은
- * 프로필에서 자동으로 가져와요 (입력 필요 없음).
- * - 로그아웃 상태면 로그인 유도 버튼만 보여줌 (onRequestLogin으로 모달 오픈)
- * - 등록 버튼 클릭 시 확인 다이얼로그를 띄우고
- * - 성공/서버 거부(하루 제한) 이후에는 버튼을 disabled 처리합니다.
+ * 점수 등록. 로그인한 회원만 등록할 수 있고, 닉네임은 프로필에서 자동으로 가져와요.
+ *
+ * - 등록이 "가능한" 상황(로그인 + 오늘 미등록)에서만 버튼 클릭 시 확인 다이얼로그를 띄웁니다.
+ * - 등록이 "불가능한" 상황(비로그인 / 오늘 이미 등록함)에서는 다이얼로그 없이
+ *   게임 하단에 안내 메시지만 보여줍니다.
  * 실제 하루 제한은 DB 트리거(user_id 기준)가 강제하고, 로컬 저장은 UX 편의용입니다.
  */
-export default function SubmitScoreForm({ gameId, score, unit = '', onRequestLogin }) {
+export default function SubmitScoreForm({ gameId, score, unit = '', onRequestLogin, onSubmitted }) {
   const { user, nickname } = useAuth()
   const [status, setStatus] = useState('idle') // idle | confirming | submitting | done | limited | error
   const [errorMsg, setErrorMsg] = useState('')
 
   useEffect(() => {
-    if (hasSubmittedToday(gameId)) {
+    if (hasSubmittedToday(gameId, user?.id)) {
       setStatus('done')
     }
-  }, [gameId])
+  }, [gameId, user?.id])
 
+  // 불가능한 케이스 1: 비로그인 → 안내 메시지만 (다이얼로그 없음)
   if (!user) {
     return (
       <div className="submit-score submit-score--locked">
@@ -36,6 +37,7 @@ export default function SubmitScoreForm({ gameId, score, unit = '', onRequestLog
     )
   }
 
+  // 불가능한 케이스 2: 오늘 이미 등록함 → 안내 메시지만 (다이얼로그 없음)
   if (status === 'done' || status === 'limited') {
     return (
       <div className="submit-score submit-score--done">
@@ -55,7 +57,7 @@ export default function SubmitScoreForm({ gameId, score, unit = '', onRequestLog
 
     if (error) {
       const isDailyLimit = error.message?.includes(DAILY_LIMIT_ERROR)
-      markSubmittedToday(gameId) // 서버가 이미 막았으니 로컬도 오늘은 그만 시도하도록 동기화
+      markSubmittedToday(gameId, user.id) // 서버가 이미 막았으니 로컬도 오늘은 그만 시도하도록 동기화
       setStatus(isDailyLimit ? 'limited' : 'error')
       setErrorMsg(
         isDailyLimit
@@ -65,20 +67,15 @@ export default function SubmitScoreForm({ gameId, score, unit = '', onRequestLog
       return
     }
 
-    markSubmittedToday(gameId)
+    markSubmittedToday(gameId, user.id)
     setStatus('done')
+    onSubmitted?.()
   }
 
+  // 가능한 케이스: 버튼 클릭 시에만 다이얼로그로 확인
   return (
     <>
       <div className="submit-score">
-        <p className="submit-score__prompt">
-          <strong>
-            {score}
-            {unit}
-          </strong>{' '}
-          기록을 <strong>{nickname}</strong>(으)로 등록할까요?
-        </p>
         <button
           type="button"
           className="submit-score__button"
@@ -93,7 +90,7 @@ export default function SubmitScoreForm({ gameId, score, unit = '', onRequestLog
       <ConfirmDialog
         open={status === 'confirming'}
         title="랭킹 등록"
-        message={`이 게임은 하루에 한 번만 랭킹 등록이 가능해요.\n"${nickname}" 닉네임으로 ${score}${unit} 기록을 등록할까요?`}
+        message={`${score}${unit} 기록을 "${nickname}" 닉네임으로 랭킹에 등록하시겠습니까?\n하루에 한 번만 등록할 수 있어요.`}
         confirmLabel="등록하기"
         cancelLabel="취소"
         onConfirm={handleConfirm}

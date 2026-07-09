@@ -3,6 +3,7 @@ import GameShell from '../components/common/GameShell.jsx'
 import Leaderboard from '../components/common/Leaderboard.jsx'
 import SubmitScoreForm from '../components/common/SubmitScoreForm.jsx'
 import ShareButton from '../components/common/ShareButton.jsx'
+import LikeButton from '../components/common/LikeButton.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
 import { games } from '../data/games.js'
 
@@ -30,6 +31,7 @@ export default function ReactionGame() {
   const [reactionMs, setReactionMs] = useState(null)
   const [bestMs, setBestMs] = useState(null)
   const [attempts, setAttempts] = useState(0)
+  const [leaderboardRefreshSignal, setLeaderboardRefreshSignal] = useState(0)
 
   const timeoutRef = useRef(null)
   const readyAtRef = useRef(0)
@@ -117,14 +119,29 @@ export default function ReactionGame() {
           </div>
 
           {phase === PHASE.RESULT && (
-            <SubmitScoreForm gameId={GAME_ID} score={reactionMs} unit="ms" onRequestLogin={openAuthModal} />
+            <SubmitScoreForm
+              gameId={GAME_ID}
+              score={reactionMs}
+              unit="ms"
+              onRequestLogin={openAuthModal}
+              onSubmitted={() => setLeaderboardRefreshSignal((n) => n + 1)}
+            />
           )}
 
-          <ShareButton title="반응속도 테스트 — Mini Arcade" text={shareText} />
+          <div className="game-actions">
+            <LikeButton gameId={GAME_ID} onRequestLogin={openAuthModal} />
+            <ShareButton title="반응속도 테스트 — Mini Arcade" text={shareText} />
+          </div>
         </div>
 
         <div className="game-layout__side">
-          <Leaderboard gameId={GAME_ID} order="asc" unit="ms" limit={10} />
+          <Leaderboard
+            gameId={GAME_ID}
+            order="asc"
+            unit="ms"
+            limit={10}
+            refreshSignal={leaderboardRefreshSignal}
+          />
         </div>
       </div>
     </GameShell>

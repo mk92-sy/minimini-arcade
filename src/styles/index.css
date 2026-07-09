@@ -888,8 +888,142 @@ button {
   font-weight: 700;
 }
 
+/* ---------- Cabinet meta (like/challenger counts on Home cards) ---------- */
+
+.cabinet__meta {
+  display: flex;
+  gap: 12px;
+  margin: 0 0 12px;
+}
+
+.cabinet__meta-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+/* ---------- Game actions row (like + share, always visible) ---------- */
+
+.game-actions {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+/* ---------- Like button ---------- */
+
+.like-button {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--border-soft);
+  background: var(--bg-void);
+  color: var(--text-bright);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  cursor: pointer;
+  transition: border-color 0.15s ease, transform 0.15s ease;
+}
+
+.like-button:hover {
+  transform: translateY(-2px);
+}
+
+.like-button--active {
+  border-color: color-mix(in srgb, #ef476f 55%, transparent);
+}
+
+.like-button__count {
+  min-width: 1.2em;
+  text-align: left;
+}
+
+/* ---------- Leaderboard: my rank box ---------- */
+
+.leaderboard__my-rank {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px dashed var(--border-soft);
+}
+
+.leaderboard__my-rank-title {
+  margin: 0 0 8px;
+  font-family: var(--font-display);
+  font-size: 10px;
+  letter-spacing: 2px;
+  color: var(--tint, var(--accent-arcade));
+}
+
+.leaderboard__my-rank-text {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+.leaderboard__my-rank-text strong {
+  color: var(--tint, var(--text-bright));
+}
+
+/* ---------- Auth modal: nickname byte counter / warning / danger zone ---------- */
+
+.auth-modal__edit-block {
+  margin: 18px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
 .auth-modal__edit-row {
   display: flex;
   gap: 8px;
-  margin: 18px 0;
+}
+
+.auth-modal__byte-counter {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.auth-modal__warning {
+  margin: 0;
+  font-size: 12px;
+  color: var(--accent-danger);
+  line-height: 1.5;
+}
+
+.auth-modal__error {
+  margin: 14px 0 0;
+  font-size: 13px;
+  color: var(--accent-danger);
+  text-align: center;
+}
+
+.auth-modal__danger-zone {
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border-soft);
+  text-align: center;
+}
+
+.auth-modal__delete-link {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: 12px;
+  color: var(--text-muted);
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.auth-modal__delete-link:hover {
+  color: var(--accent-danger);
 }

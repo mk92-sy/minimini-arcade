@@ -1,7 +1,21 @@
+import { useEffect, useState } from 'react'
 import { games } from '../data/games.js'
 import GameCard from '../components/GameCard.jsx'
+import { fetchGameStats } from '../lib/gameStats.js'
 
 export default function Home() {
+  const [stats, setStats] = useState({})
+
+  useEffect(() => {
+    let cancelled = false
+    fetchGameStats().then((map) => {
+      if (!cancelled) setStats(map)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
   return (
     <div className="hub">
       <header className="hub__header">
@@ -27,7 +41,7 @@ export default function Home() {
 
       <section className="hub__grid" aria-label="게임 목록">
         {games.map((game) => (
-          <GameCard key={game.id} game={game} />
+          <GameCard key={game.id} game={game} stats={stats[game.id]} />
         ))}
       </section>
 
