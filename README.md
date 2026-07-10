@@ -134,7 +134,7 @@ npm run dev
 4. Environment Variables에 `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `DEVTOOLS_ALLOWED_IPS`(선택) 추가
 5. Deploy
 
-`vercel.json`에 SPA 라우팅용 rewrite가 포함되어 있어서 `/game/reaction` 같은 경로를 새로고침해도 404가 안 뜹니다 (`/api/*`는 rewrite 대상에서 제외됨).
+`vercel.json`은 `/game/*` 경로만 명시적으로 `index.html`로 rewrite해서, `/game/reaction` 새로고침해도 404가 안 뜹니다. `/api/*`는 애초에 규칙 대상이 아니라 항상 정상 동작합니다.
 
 ## 구조
 
