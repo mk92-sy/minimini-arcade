@@ -18,17 +18,6 @@ export default function Home() {
 
   return (
     <div className="hub">
-      <header className="hub__header">
-        <div className="hub__logo">
-          <span className="hub__bulbs" aria-hidden="true">
-            {Array.from({ length: 7 }).map((_, i) => (
-              <span key={i} style={{ '--i': i }} />
-            ))}
-          </span>
-          <span className="hub__logo-text">MINI ARCADE</span>
-        </div>
-      </header>
-
       <section className="hub__hero">
         <p className="hub__eyebrow">8 CABINETS · 0 LOADING SCREENS</p>
         <h1 className="hub__headline">

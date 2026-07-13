@@ -89,7 +89,7 @@ export default function ReactionGame() {
       : '미니 아케이드 반응속도 테스트, 너도 도전해봐 ⚡'
 
   return (
-    <GameShell eyebrow={`CABINET ${meta.number}`} title={meta.title} tint={meta.tint} wide>
+    <GameShell tint={meta.tint} wide>
       <div className="game-layout">
         <div className="game-layout__main reaction">
           <button

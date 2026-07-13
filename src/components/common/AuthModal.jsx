@@ -1,28 +1,13 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext.jsx'
-import { getDisplayByteLength, NICKNAME_MAX_BYTES } from '../../lib/nicknameValidation.js'
 import ConfirmDialog from './ConfirmDialog.jsx'
 import { IconGoogle, IconKakao } from './icons.jsx'
 
 export default function AuthModal() {
-  const {
-    modalOpen,
-    closeAuthModal,
-    user,
-    nickname,
-    authError,
-    clearAuthError,
-    signInWithGoogle,
-    signInWithKakao,
-    signOut,
-    changeNickname,
-    deleteAccount,
-  } = useAuth()
-
-  const [editing, setEditing] = useState(false)
-  const [editValue, setEditValue] = useState('')
-  const [saveStatus, setSaveStatus] = useState('idle') // idle | saving | error
-  const [saveError, setSaveError] = useState('')
+  const { modalOpen, closeAuthModal, user, nickname, authError, clearAuthError, signInWithGoogle, signInWithKakao, signOut, deleteAccount } =
+    useAuth()
+  const navigate = useNavigate()
 
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [deleteStatus, setDeleteStatus] = useState('idle') // idle | deleting | error
@@ -32,9 +17,13 @@ export default function AuthModal() {
   if (!modalOpen) return null
 
   const handleClose = () => {
-    setEditing(false)
     clearAuthError()
     closeAuthModal()
+  }
+
+  const goToSettings = () => {
+    closeAuthModal()
+    navigate('/settings')
   }
 
   if (accountDeleted) {
@@ -60,30 +49,6 @@ export default function AuthModal() {
         </div>
       </div>
     )
-  }
-
-  const startEdit = () => {
-    setEditValue(nickname ?? '')
-    setSaveStatus('idle')
-    setEditing(true)
-  }
-
-  const handleNicknameInput = (value) => {
-    if (getDisplayByteLength(value) <= NICKNAME_MAX_BYTES) {
-      setEditValue(value)
-    }
-  }
-
-  const handleSave = async () => {
-    setSaveStatus('saving')
-    const { error } = await changeNickname(editValue)
-    if (error) {
-      setSaveStatus('error')
-      setSaveError(error.message)
-      return
-    }
-    setSaveStatus('idle')
-    setEditing(false)
   }
 
   const handleDeleteAccount = async () => {
@@ -135,40 +100,12 @@ export default function AuthModal() {
           <>
             <h2 className="dialog__title">내 계정</h2>
 
-            {!editing ? (
-              <div className="auth-modal__nickname-row">
-                <span className="auth-modal__nickname">{nickname}</span>
-                <button type="button" className="dialog__button dialog__button--ghost" onClick={startEdit}>
-                  닉네임 변경
-                </button>
-              </div>
-            ) : (
-              <div className="auth-modal__edit-block">
-                <div className="auth-modal__edit-row">
-                  <input
-                    className="submit-score__input"
-                    value={editValue}
-                    onChange={(e) => handleNicknameInput(e.target.value)}
-                    autoFocus
-                  />
-                  <button
-                    type="button"
-                    className="dialog__button dialog__button--primary"
-                    onClick={handleSave}
-                    disabled={saveStatus === 'saving'}
-                  >
-                    저장
-                  </button>
-                </div>
-                <p className="auth-modal__byte-counter">
-                  {getDisplayByteLength(editValue)}/{NICKNAME_MAX_BYTES}바이트 (한글 최대 12자)
-                </p>
-                <p className="auth-modal__warning">
-                  ⚠️ 부적절한 닉네임(욕설·비방·광고성 문구 등)은 별도 경고 없이 계정이 삭제될 수 있어요.
-                </p>
-              </div>
-            )}
-            {saveStatus === 'error' && <p className="submit-score__error">{saveError}</p>}
+            <div className="auth-modal__nickname-row">
+              <span className="auth-modal__nickname">{nickname}</span>
+              <button type="button" className="dialog__button dialog__button--ghost" onClick={goToSettings}>
+                설정에서 변경
+              </button>
+            </div>
 
             <div className="dialog__actions">
               <button type="button" className="dialog__button dialog__button--ghost" onClick={signOut}>

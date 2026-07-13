@@ -56,9 +56,10 @@ export default function CoinAwardModal() {
               type="button"
               className="coin-modal__ad-button"
               onClick={handleWatchAd}
-              disabled={adStatus === 'watching'}
+              disabled
+              title="광고 SDK 연동 준비 중이에요"
             >
-              {adStatus === 'watching' ? '광고 재생 중...' : '📺 광고 보고 +2코인 받기'}
+              📺 광고 보고 +2코인 받기 (준비 중)
             </button>
             {adStatus === 'error' && (
               <p className="coin-modal__ad-error">광고 보너스를 받지 못했어요. 잠시 후 다시 시도해주세요.</p>

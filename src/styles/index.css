@@ -10,6 +10,7 @@
   --text-bright: #f5f3ff;
   --text-muted: #9a95c9;
   --border-soft: rgba(245, 243, 255, 0.08);
+  --tint: var(--accent-marquee);
 
   --font-display: 'Press Start 2P', 'Courier New', monospace;
   --font-body: 'Space Grotesk', 'Segoe UI', sans-serif;
@@ -71,54 +72,18 @@ button {
 }
 
 .hub--single {
-  min-height: 100vh;
+  min-height: calc(100vh - 220px);
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 24px;
 }
 
-/* ---------- Header / marquee logo ---------- */
-
-.hub__header {
-  display: flex;
-  justify-content: center;
-  margin-bottom: 56px;
-}
-
-.hub__logo {
-  display: inline-flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 10px;
-}
-
-.hub__bulbs {
-  display: flex;
-  gap: 8px;
-}
-
-.hub__bulbs span {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--accent-marquee);
-  box-shadow: 0 0 6px var(--accent-marquee);
-  animation: bulb-blink 1.6s ease-in-out infinite;
-  animation-delay: calc(var(--i) * 0.12s);
-}
+/* ---------- Bulb blink keyframes (used by .app-header__bulbs) ---------- */
 
 @keyframes bulb-blink {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.15; }
-}
-
-.hub__logo-text {
-  font-family: var(--font-display);
-  font-size: 15px;
-  letter-spacing: 3px;
-  color: var(--accent-marquee);
-  text-shadow: 0 0 18px rgba(255, 183, 3, 0.45);
 }
 
 /* ---------- Hero ---------- */
@@ -329,10 +294,12 @@ button {
   font-family: var(--font-mono);
   font-size: 13px;
   color: var(--tint);
+  background: transparent;
   border: 1px solid color-mix(in srgb, var(--tint) 50%, transparent);
   padding: 10px 18px;
   border-radius: 8px;
   display: inline-block;
+  cursor: pointer;
   transition: background 0.18s ease;
 }
 
@@ -341,26 +308,6 @@ button {
 }
 
 /* ---------- Game shell (shared by every game page) ---------- */
-
-.game-shell__nav {
-  margin-bottom: 24px;
-}
-
-.game-shell__back {
-  font-family: var(--font-mono);
-  font-size: 13px;
-  color: var(--text-muted);
-  transition: color 0.15s ease;
-}
-
-.game-shell__back:hover {
-  color: var(--tint, var(--text-bright));
-}
-
-.game-shell__header {
-  text-align: center;
-  margin-bottom: 40px;
-}
 
 .game-shell__body {
   max-width: 480px;
@@ -789,13 +736,10 @@ button {
   color: var(--text-muted);
 }
 
-/* ---------- Auth button (fixed, global) ---------- */
+/* ---------- Auth button (lives inside the sticky Header) ---------- */
 
 .auth-button {
-  position: fixed;
-  top: 18px;
-  right: 18px;
-  z-index: 50;
+  flex-shrink: 0;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -808,7 +752,6 @@ button {
   font-size: 12px;
   letter-spacing: 0.5px;
   cursor: pointer;
-  backdrop-filter: blur(6px);
   transition: border-color 0.15s ease, transform 0.15s ease;
 }
 
@@ -1112,4 +1055,160 @@ button {
   font-size: 12px;
   color: var(--accent-danger);
   text-align: center;
+}
+
+/* ---------- App layout (sticky header + fixed bottom nav) ---------- */
+
+.app-content {
+  padding-bottom: 84px; /* bottom nav 높이만큼 여백 확보 */
+}
+
+/* ---------- Sticky app header ---------- */
+
+.app-header {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 20px;
+  background: color-mix(in srgb, var(--bg-void) 92%, transparent);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--border-soft);
+}
+
+.app-header__left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.app-header__logo {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.app-header__bulbs {
+  display: flex;
+  gap: 6px;
+}
+
+.app-header__bulbs span {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--accent-marquee);
+  box-shadow: 0 0 6px var(--accent-marquee);
+  animation: bulb-blink 1.6s ease-in-out infinite;
+  animation-delay: calc(var(--i) * 0.12s);
+}
+
+.app-header__logo-text {
+  font-family: var(--font-display);
+  font-size: 12px;
+  letter-spacing: 2px;
+  color: var(--accent-marquee);
+}
+
+.app-header__back {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  color: var(--text-bright);
+  transition: background 0.15s ease;
+}
+
+.app-header__back:hover {
+  background: var(--bg-surface);
+}
+
+.app-header__game-title {
+  font-size: 15px;
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ---------- Fixed bottom nav ---------- */
+
+.bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 40;
+  display: flex;
+  background: color-mix(in srgb, var(--bg-void) 94%, transparent);
+  backdrop-filter: blur(10px);
+  border-top: 1px solid var(--border-soft);
+  padding-bottom: env(safe-area-inset-bottom, 0);
+}
+
+.bottom-nav__item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 10px 4px 8px;
+  color: var(--text-muted);
+  transition: color 0.15s ease;
+}
+
+.bottom-nav__item--active {
+  color: var(--accent-marquee);
+}
+
+.bottom-nav__label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.5px;
+}
+
+/* ---------- Settings page ---------- */
+
+.settings-page {
+  max-width: 480px;
+  margin: 24px auto 0;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.settings-page__title {
+  font-size: 22px;
+  font-weight: 700;
+  margin: 0;
+}
+
+.settings-page__section {
+  padding: 18px;
+  border: 1px solid var(--border-soft);
+  border-radius: 12px;
+  background: var(--bg-surface);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.settings-page__section-title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
+.settings-page__saved {
+  margin: 0;
+  font-size: 12px;
+  color: var(--accent-arcade);
 }
