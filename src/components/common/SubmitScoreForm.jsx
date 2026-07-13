@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { submitScore } from '../../lib/scores.js'
+import { claimCoinsForScore } from '../../lib/coins.js'
 import { hasSubmittedToday, markSubmittedToday } from '../../lib/dailyLimit.js'
 import { useAuth } from '../../context/AuthContext.jsx'
 import ConfirmDialog from './ConfirmDialog.jsx'
@@ -15,7 +16,7 @@ const DAILY_LIMIT_ERROR = 'DAILY_LIMIT_REACHED'
  * 실제 하루 제한은 DB 트리거(user_id 기준)가 강제하고, 로컬 저장은 UX 편의용입니다.
  */
 export default function SubmitScoreForm({ gameId, score, unit = '', onRequestLogin, onSubmitted }) {
-  const { user, nickname } = useAuth()
+  const { user, nickname, notifyCoinsAwarded } = useAuth()
   const [status, setStatus] = useState('idle') // idle | confirming | submitting | done | limited | error
   const [errorMsg, setErrorMsg] = useState('')
 
@@ -70,6 +71,9 @@ export default function SubmitScoreForm({ gameId, score, unit = '', onRequestLog
     markSubmittedToday(gameId, user.id)
     setStatus('done')
     onSubmitted?.()
+
+    const { awards } = await claimCoinsForScore(gameId)
+    notifyCoinsAwarded(awards, gameId)
   }
 
   // 가능한 케이스: 버튼 클릭 시에만 다이얼로그로 확인

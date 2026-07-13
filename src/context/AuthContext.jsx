@@ -9,6 +9,7 @@ export function AuthProvider({ children }) {
   const [profile, setProfile] = useState(null)
   const [modalOpen, setModalOpen] = useState(false)
   const [authError, setAuthError] = useState('')
+  const [coinAward, setCoinAward] = useState(null) // { awards: [{award_type, amount}], total } | null
 
   // 세션 구독
   useEffect(() => {
@@ -133,11 +134,41 @@ export function AuthProvider({ children }) {
     return { error: null }
   }, [session])
 
+  /**
+   * 점수 등록 직후 claimCoinsForScore() 결과를 넘겨받아, 실제로 지급된 항목이
+   * 있으면 잔액을 즉시 반영하고(서버 update와 동일한 금액이라 안전) 획득 모달을 띄웁니다.
+   * gameId는 모달에서 "광고 보고 +2코인" 버튼이 어느 게임에 대해 지급 요청할지 알기 위해 필요합니다.
+   */
+  const notifyCoinsAwarded = useCallback((awards, gameId) => {
+    if (!awards || awards.length === 0) return
+    const total = awards.reduce((sum, a) => sum + a.amount, 0)
+    setProfile((p) => (p ? { ...p, coins: p.coins + total } : p))
+    setCoinAward({ awards, total, gameId })
+  }, [])
+
+  /**
+   * 광고 시청 보너스처럼, 이미 열려있는 코인 모달에 추가로 항목을 얹을 때 사용합니다.
+   */
+  const addBonusCoinAward = useCallback((award) => {
+    if (!award) return
+    setProfile((p) => (p ? { ...p, coins: p.coins + award.amount } : p))
+    setCoinAward((prev) =>
+      prev
+        ? { ...prev, awards: [...prev.awards, award], total: prev.total + award.amount }
+        : { awards: [award], total: award.amount, gameId: null },
+    )
+  }, [])
+
   const value = {
     isConfigured: Boolean(supabase),
     user: session?.user ?? null,
     profile,
     nickname: profile?.nickname ?? null,
+    coins: profile?.coins ?? 0,
+    coinAward,
+    notifyCoinsAwarded,
+    addBonusCoinAward,
+    closeCoinAward: () => setCoinAward(null),
     modalOpen,
     openAuthModal: () => setModalOpen(true),
     closeAuthModal: () => setModalOpen(false),

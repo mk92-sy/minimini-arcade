@@ -1,3 +1,14 @@
+export function IconCoin(props) {
+  return (
+    <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" {...props}>
+      <circle cx="12" cy="12" r="10" fill="#FFD54A" stroke="#C9971F" strokeWidth="1.5" />
+      <text x="12" y="16.5" textAnchor="middle" fontSize="11" fontWeight="700" fill="#8A6412">
+        C
+      </text>
+    </svg>
+  )
+}
+
 export function IconHeart({ filled = false, ...props }) {
   return (
     <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" {...props}>

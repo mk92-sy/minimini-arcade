@@ -13,7 +13,7 @@ export async function ensureProfile(user) {
 
   const { data: existing, error: fetchError } = await supabase
     .from('profiles')
-    .select('id, nickname, provider')
+    .select('id, nickname, provider, coins')
     .eq('id', user.id)
     .maybeSingle()
 
@@ -31,7 +31,7 @@ export async function ensureProfile(user) {
     const { data, error } = await supabase
       .from('profiles')
       .insert([{ id: user.id, nickname, provider }])
-      .select('id, nickname, provider')
+      .select('id, nickname, provider, coins')
       .single()
 
     if (!error) return data
@@ -63,7 +63,7 @@ export async function updateNickname(userId, nextNickname) {
     .from('profiles')
     .update({ nickname: trimmed })
     .eq('id', userId)
-    .select('id, nickname, provider')
+    .select('id, nickname, provider, coins')
     .single()
 
   if (error?.code === '23505') {
