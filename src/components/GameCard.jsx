@@ -11,7 +11,7 @@ export default function GameCard({ game, stats }) {
   return (
     <Link to={game.path} className="cabinet" style={style}>
       <div className="cabinet__marquee">
-        <span className="cabinet__number">CABINET {game.number}</span>
+        <span className="cabinet__number">GAME {game.number}</span>
         <span className="cabinet__dot" aria-hidden="true" />
       </div>
 

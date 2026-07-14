@@ -22,12 +22,7 @@ export default function Header() {
           </>
         ) : (
           <Link to="/" className="app-header__logo">
-            <span className="app-header__bulbs" aria-hidden="true">
-              {Array.from({ length: 5 }).map((_, i) => (
-                <span key={i} style={{ '--i': i }} />
-              ))}
-            </span>
-            <span className="app-header__logo-text">MINI ARCADE</span>
+            <span className="app-header__logo-text">MINIMINI ARCADE</span>
           </Link>
         )}
       </div>

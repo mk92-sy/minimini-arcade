@@ -2,8 +2,10 @@ import { useEffect, useState } from 'react'
 import { games } from '../data/games.js'
 import GameCard from '../components/GameCard.jsx'
 import { fetchGameStats } from '../lib/gameStats.js'
+import usePageTitle from '../hooks/usePageTitle.js'
 
 export default function Home() {
+  usePageTitle('게임')
   const [stats, setStats] = useState({})
 
   useEffect(() => {
@@ -19,13 +21,7 @@ export default function Home() {
   return (
     <div className="hub">
       <section className="hub__hero">
-        <p className="hub__eyebrow">8 CABINETS · 0 LOADING SCREENS</p>
-        <h1 className="hub__headline">
-          캐비닛을 고르고,<br />바로 플레이하세요.
-        </h1>
-        <p className="hub__sub">
-          동전은 필요 없습니다. 클릭 한 번이면 게임이 시작돼요.
-        </p>
+        <p className="hub__sub">동전 없이 바로 즐기는 미니게임 아케이드예요.</p>
       </section>
 
       <section className="hub__grid" aria-label="게임 목록">
@@ -35,8 +31,7 @@ export default function Home() {
       </section>
 
       <footer className="hub__footer">
-        <span>React + Vite</span>
-        <span className="hub__footer-dim">// 캐비닛은 계속 추가될 예정</span>
+        <span>© 2026 mk92-sy. All rights reserved.</span>
       </footer>
     </div>
   )

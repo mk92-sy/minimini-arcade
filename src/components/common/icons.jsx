@@ -1,3 +1,45 @@
+export function IconLogIn(props) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      width="18"
+      height="18"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+      {...props}
+    >
+      <path d="M11 4H5a1 1 0 0 0-1 1v14a1 1 0 0 0 1 1h6" />
+      <path d="M15 8l4 4-4 4" />
+      <path d="M19 12H9" />
+    </svg>
+  )
+}
+
+export function IconLogOut(props) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      width="18"
+      height="18"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+      {...props}
+    >
+      <path d="M13 4h6a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1h-6" />
+      <path d="M9 16l-4-4 4-4" />
+      <path d="M5 12h10" />
+    </svg>
+  )
+}
+
 export function IconArrowLeft(props) {
   return (
     <svg

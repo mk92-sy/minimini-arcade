@@ -6,6 +6,7 @@ import ShareButton from '../components/common/ShareButton.jsx'
 import LikeButton from '../components/common/LikeButton.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
 import { games } from '../data/games.js'
+import usePageTitle from '../hooks/usePageTitle.js'
 
 const GAME_ID = 'reaction'
 const meta = games.find((g) => g.id === GAME_ID)
@@ -26,6 +27,7 @@ const SCREEN_TEXT = {
 }
 
 export default function ReactionGame() {
+  usePageTitle(meta.title)
   const { openAuthModal } = useAuth()
   const [phase, setPhase] = useState(PHASE.IDLE)
   const [reactionMs, setReactionMs] = useState(null)
