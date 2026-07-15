@@ -169,14 +169,20 @@ on conflict (id) do update set order_direction = excluded.order_direction;
 create table if not exists public.notifications (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references auth.users(id) on delete cascade,
-  type text not null check (type in ('score_submitted', 'daily_play_reward', 'daily_rank_reward')),
+  type text not null check (type in ('score_submitted', 'daily_play_reward', 'daily_rank_reward', 'admin_broadcast')),
   game_id text,
   amount integer,
   rank integer,       -- daily_rank_reward 전용 (1/2/3)
   reward_date date,   -- daily_rank_reward 전용: 몇 월 며칠자 랭킹 보상인지
+  message text,       -- admin_broadcast 전용: 관리자가 SQL Editor에서 직접 넣는 자유 문구
   read_at timestamptz,
   created_at timestamptz not null default now()
 );
+
+alter table public.notifications add column if not exists message text;
+alter table public.notifications drop constraint if exists notifications_type_check;
+alter table public.notifications add constraint notifications_type_check
+  check (type in ('score_submitted', 'daily_play_reward', 'daily_rank_reward', 'admin_broadcast'));
 
 create index if not exists notifications_user_id_created_at_idx
   on public.notifications (user_id, created_at desc);

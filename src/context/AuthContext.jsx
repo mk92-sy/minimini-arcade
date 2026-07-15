@@ -1,8 +1,11 @@
 import { createContext, useCallback, useContext, useEffect, useState } from 'react'
 import { supabase } from '../lib/supabaseClient.js'
 import { ensureProfile, updateNickname as updateNicknameRequest } from '../lib/profile.js'
+import { fetchUnreadNotificationCount } from '../lib/notifications.js'
 
 const AuthContext = createContext(null)
+
+const UNREAD_POLL_INTERVAL = 45 * 1000
 
 export function AuthProvider({ children }) {
   const [session, setSession] = useState(null)
@@ -10,6 +13,7 @@ export function AuthProvider({ children }) {
   const [modalOpen, setModalOpen] = useState(false)
   const [authError, setAuthError] = useState('')
   const [coinAward, setCoinAward] = useState(null) // { awards: [{award_type, amount}], total } | null
+  const [unreadCount, setUnreadCount] = useState(0)
 
   // 세션 구독
   useEffect(() => {
@@ -60,6 +64,41 @@ export function AuthProvider({ children }) {
 
     return () => {
       cancelled = true
+    }
+  }, [session])
+
+  const refreshUnreadCount = useCallback(async () => {
+    const user = session?.user
+    if (!user) {
+      setUnreadCount(0)
+      return
+    }
+    const count = await fetchUnreadNotificationCount(user.id)
+    setUnreadCount(count)
+  }, [session])
+
+  // 로그인 상태가 바뀌면 즉시 한 번 갱신하고, 로그인 중엔 주기적으로 폴링해서
+  // 자정 배치 지급처럼 "내가 안 봐도 서버가 만드는" 알림도 dot에 반영되게 함.
+  useEffect(() => {
+    if (!supabase) return
+    const user = session?.user
+    if (!user) {
+      setUnreadCount(0)
+      return
+    }
+
+    let cancelled = false
+    const tick = async () => {
+      const count = await fetchUnreadNotificationCount(user.id)
+      if (!cancelled) setUnreadCount(count)
+    }
+
+    tick()
+    const interval = setInterval(tick, UNREAD_POLL_INTERVAL)
+
+    return () => {
+      cancelled = true
+      clearInterval(interval)
     }
   }, [session])
 
@@ -182,6 +221,8 @@ export function AuthProvider({ children }) {
     notifyCoinsAwarded,
     addBonusCoinAward,
     closeCoinAward: () => setCoinAward(null),
+    unreadCount,
+    refreshUnreadCount,
     modalOpen,
     openAuthModal: () => setModalOpen(true),
     closeAuthModal: () => setModalOpen(false),

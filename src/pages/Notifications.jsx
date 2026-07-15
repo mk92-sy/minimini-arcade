@@ -1,9 +1,16 @@
 import { useEffect, useState } from 'react'
 import { useAuth } from '../context/AuthContext.jsx'
-import { fetchNotifications, markAllNotificationsRead, deleteAllNotifications } from '../lib/notifications.js'
+import {
+  fetchNotifications,
+  markAllNotificationsRead,
+  markNotificationRead,
+  deleteAllNotifications,
+  deleteNotification,
+} from '../lib/notifications.js'
 import { formatRelativeTime } from '../lib/relativeTime.js'
 import { games } from '../data/games.js'
 import ConfirmDialog from '../components/common/ConfirmDialog.jsx'
+import { IconClose } from '../components/common/icons.jsx'
 import usePageTitle from '../hooks/usePageTitle.js'
 
 function gameTitle(gameId) {
@@ -23,6 +30,8 @@ function buildMessage(n) {
       return `${gameTitle(n.game_id)} 일일 보상이 지급되었습니다. (+${n.amount})`
     case 'daily_rank_reward':
       return `${formatMonthDay(n.reward_date)} ${n.rank}위를 달성하여 축하 보상이 지급되었습니다. (+${n.amount})`
+    case 'admin_broadcast':
+      return n.message || '운영자로부터 새 공지가 도착했어요.'
     default:
       return '새 알림이 있어요.'
   }
@@ -30,7 +39,7 @@ function buildMessage(n) {
 
 export default function Notifications() {
   usePageTitle('알림')
-  const { isConfigured, user, openAuthModal } = useAuth()
+  const { isConfigured, user, openAuthModal, refreshUnreadCount } = useAuth()
 
   const [items, setItems] = useState([])
   const [status, setStatus] = useState('loading') // loading | ready | error
@@ -73,17 +82,35 @@ export default function Notifications() {
 
   const unreadCount = items.filter((n) => !n.read_at).length
 
+  const handleItemClick = async (n) => {
+    if (n.read_at) return
+    const { error } = await markNotificationRead(n.id)
+    if (error) return
+    const now = new Date().toISOString()
+    setItems((prev) => prev.map((item) => (item.id === n.id ? { ...item, read_at: now } : item)))
+    refreshUnreadCount()
+  }
+
+  const handleDeleteOne = async (id) => {
+    const { error } = await deleteNotification(id)
+    if (error) return
+    setItems((prev) => prev.filter((item) => item.id !== id))
+    refreshUnreadCount()
+  }
+
   const handleMarkAllRead = async () => {
     const { error } = await markAllNotificationsRead(user.id)
     if (error) return
     const now = new Date().toISOString()
     setItems((prev) => prev.map((n) => (n.read_at ? n : { ...n, read_at: now })))
+    refreshUnreadCount()
   }
 
   const handleDeleteAll = async () => {
     await deleteAllNotifications(user.id)
     setItems([])
     setDeleteDialogOpen(false)
+    refreshUnreadCount()
   }
 
   return (
@@ -124,12 +151,30 @@ export default function Notifications() {
               <li
                 key={n.id}
                 className={`notif-page__item${!n.read_at ? ' notif-page__item--unread' : ''}`}
+                onClick={() => handleItemClick(n)}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') handleItemClick(n)
+                }}
               >
                 <span className="notif-page__dot" aria-hidden="true" />
                 <div className="notif-page__body">
                   <p className="notif-page__message">{buildMessage(n)}</p>
                   <p className="notif-page__time">{formatRelativeTime(n.created_at)}</p>
                 </div>
+                <button
+                  type="button"
+                  className="notif-page__delete-btn"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    handleDeleteOne(n.id)
+                  }}
+                  aria-label="알림 삭제"
+                  title="알림 삭제"
+                >
+                  <IconClose />
+                </button>
               </li>
             ))}
           </ul>

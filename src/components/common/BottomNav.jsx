@@ -1,5 +1,6 @@
 import { Link, useLocation } from 'react-router-dom'
 import { IconBell, IconGamepad, IconSettings, IconStore } from './icons.jsx'
+import { useAuth } from '../../context/AuthContext.jsx'
 
 const TABS = [
   { key: 'games', label: '게임', to: '/', Icon: IconGamepad, isActive: (p) => p === '/' || p.startsWith('/game/') },
@@ -16,6 +17,7 @@ const TABS = [
 
 export default function BottomNav() {
   const { pathname } = useLocation()
+  const { unreadCount } = useAuth()
 
   return (
     <nav className="bottom-nav" aria-label="주요 메뉴">
@@ -23,7 +25,12 @@ export default function BottomNav() {
         const active = isActive(pathname)
         return (
           <Link key={key} to={to} className={`bottom-nav__item${active ? ' bottom-nav__item--active' : ''}`}>
-            <Icon />
+            <span className="bottom-nav__icon-wrap">
+              <Icon />
+              {key === 'notifications' && unreadCount > 0 && (
+                <span className="bottom-nav__dot" aria-hidden="true" />
+              )}
+            </span>
             <span className="bottom-nav__label">{label}</span>
           </Link>
         )
