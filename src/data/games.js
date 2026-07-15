@@ -13,6 +13,7 @@ export const games = [
   },
   {
     id: 'guess',
+    implemented: true,
     number: '02',
     title: '숫자 맞추기',
     tagline: '1부터 100, 최소 시도로',

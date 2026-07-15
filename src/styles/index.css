@@ -1242,22 +1242,6 @@ button {
   color: var(--accent-marquee);
 }
 
-.bottom-nav__icon-wrap {
-  position: relative;
-  display: inline-flex;
-}
-
-.bottom-nav__dot {
-  position: absolute;
-  top: -2px;
-  right: -3px;
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--accent-danger);
-  box-shadow: 0 0 0 2px var(--bg-void);
-}
-
 .bottom-nav__label {
   font-family: var(--font-mono);
   font-size: 10px;
@@ -1448,12 +1432,6 @@ button {
   border-radius: 12px;
   border: 1px solid var(--border-soft);
   background: var(--bg-surface);
-  cursor: pointer;
-  transition: border-color 0.15s ease;
-}
-
-.notif-page__item:hover {
-  border-color: color-mix(in srgb, var(--accent-marquee) 35%, var(--border-soft));
 }
 
 .notif-page__item--unread {
@@ -1476,8 +1454,6 @@ button {
 }
 
 .notif-page__body {
-  flex: 1;
-  min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 4px;
@@ -1496,22 +1472,164 @@ button {
   color: var(--text-muted);
 }
 
-.notif-page__delete-btn {
-  flex-shrink: 0;
+/* ---------- Guess (숫자 맞추기) ---------- */
+
+.guess {
   display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 26px;
-  height: 26px;
-  border-radius: 50%;
-  border: none;
-  background: transparent;
-  color: var(--text-muted);
-  cursor: pointer;
-  transition: color 0.15s ease, background 0.15s ease;
+  flex-direction: column;
+  gap: 20px;
 }
 
-.notif-page__delete-btn:hover {
+.guess__screen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  min-height: 180px;
+  padding: 24px;
+  border-radius: 16px;
+  border: 2px solid var(--tint);
+  background: var(--bg-screen);
+  color: var(--tint);
+}
+
+.guess__prompt {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+.guess__input-row {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+  max-width: 280px;
+}
+
+.guess__input {
+  flex: 1;
+  padding: 12px 14px;
+  border-radius: 8px;
+  border: 1px solid var(--border-soft);
+  background: var(--bg-void);
+  color: var(--text-bright);
+  font-size: 16px;
+  text-align: center;
+}
+
+.guess__input:focus-visible {
+  outline: 2px solid var(--tint);
+  outline-offset: 1px;
+}
+
+.guess__submit-button {
+  padding: 12px 18px;
+  border-radius: 8px;
+  border: none;
+  background: var(--tint);
+  color: #14122b;
+  font-weight: 700;
+  font-size: 14px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.guess__error {
+  margin: 0;
+  font-size: 12px;
   color: var(--accent-danger);
-  background: color-mix(in srgb, var(--accent-danger) 14%, transparent);
+}
+
+.guess__result-label {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 16px;
+  letter-spacing: 1px;
+  text-align: center;
+}
+
+.guess__retry-button {
+  padding: 10px 18px;
+  border-radius: 8px;
+  border: 1px solid color-mix(in srgb, var(--tint) 50%, transparent);
+  background: transparent;
+  color: var(--tint);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.guess__retry-button:hover {
+  background: color-mix(in srgb, var(--tint) 14%, transparent);
+}
+
+.guess__stats {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+
+.guess__stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 14px 8px;
+  border: 1px solid var(--border-soft);
+  border-radius: 12px;
+  background: var(--bg-surface);
+}
+
+.guess__stat-label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 1px;
+  color: var(--text-muted);
+}
+
+.guess__stat-value {
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.guess__history {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 220px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.guess__history-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: var(--bg-surface);
+  font-size: 13px;
+}
+
+.guess__history-value {
+  font-family: var(--font-mono);
+  font-weight: 700;
+}
+
+.guess__history-hint {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.guess__history-item--correct {
+  border: 1px solid color-mix(in srgb, var(--accent-arcade) 55%, transparent);
+}
+
+.guess__history-item--correct .guess__history-hint {
+  color: var(--accent-arcade);
 }
