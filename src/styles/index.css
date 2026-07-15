@@ -1633,3 +1633,133 @@ button {
 .guess__history-item--correct .guess__history-hint {
   color: var(--accent-arcade);
 }
+
+/* ---------- Spot (색깔 구별 게임) ---------- */
+
+.spot {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.spot__screen {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 20px;
+  border-radius: 16px;
+  border: 2px solid var(--tint);
+  background: var(--bg-screen);
+}
+
+.spot__screen--idle,
+.spot__screen--gameover {
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  min-height: 260px;
+  color: var(--tint);
+}
+
+.spot__screen--flash {
+  animation: spot-shake 0.32s ease;
+  border-color: var(--accent-danger);
+}
+
+@keyframes spot-shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-6px); }
+  75% { transform: translateX(6px); }
+}
+
+.spot__idle-title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 15px;
+  letter-spacing: 1px;
+}
+
+.spot__idle-sub {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.spot__start-button {
+  padding: 12px 22px;
+  border-radius: 8px;
+  border: none;
+  background: var(--tint);
+  color: #14122b;
+  font-weight: 700;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.spot__result-label {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 16px;
+  letter-spacing: 1px;
+}
+
+.spot__hud {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.spot__round-badge {
+  flex-shrink: 0;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 1px;
+  color: var(--tint);
+}
+
+.spot__timerbar-track {
+  flex: 1;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--bg-void);
+  overflow: hidden;
+}
+
+.spot__timerbar-fill {
+  height: 100%;
+  width: 100%;
+  border-radius: inherit;
+  background: var(--tint);
+  animation-name: spot-timer-shrink;
+  animation-timing-function: linear;
+  animation-fill-mode: forwards;
+  transform-origin: left;
+}
+
+@keyframes spot-timer-shrink {
+  from { width: 100%; }
+  to { width: 0%; }
+}
+
+.spot__grid {
+  display: grid;
+  gap: 8px;
+}
+
+.spot__tile {
+  aspect-ratio: 1 / 1;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  padding: 0;
+  transition: transform 0.1s ease;
+}
+
+.spot__tile:hover {
+  transform: scale(1.04);
+}
+
+.spot__tile:active {
+  transform: scale(0.96);
+}

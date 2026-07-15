@@ -23,6 +23,7 @@ export const games = [
   },
   {
     id: 'spot',
+    implemented: true,
     number: '03',
     title: '색깔 구별 게임',
     tagline: '다른 타일 하나를 찾아라',
