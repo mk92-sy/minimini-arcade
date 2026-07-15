@@ -53,6 +53,7 @@ export const games = [
   },
   {
     id: 'memory',
+    implemented: true,
     number: '06',
     title: '메모리 카드 매칭',
     tagline: '카드를 뒤집어 짝을 맞춰라',
@@ -62,6 +63,7 @@ export const games = [
   },
   {
     id: 'runner',
+    implemented: true,
     number: '07',
     title: '엔들리스 러너',
     tagline: '스페이스바로 장애물을 넘어',
@@ -71,6 +73,7 @@ export const games = [
   },
   {
     id: 'typing',
+    implemented: true,
     number: '08',
     title: '타이핑 스피드',
     tagline: '제한시간 안에 단어 입력',

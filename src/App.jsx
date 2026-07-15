@@ -9,6 +9,9 @@ import GuessGame from './games/GuessGame.jsx'
 import SpotGame from './games/SpotGame.jsx'
 import Game2048 from './games/Game2048.jsx'
 import MoleGame from './games/MoleGame.jsx'
+import MemoryGame from './games/MemoryGame.jsx'
+import RunnerGame from './games/RunnerGame.jsx'
+import TypingGame from './games/TypingGame.jsx'
 import Header from './components/common/Header.jsx'
 import BottomNav from './components/common/BottomNav.jsx'
 import AuthModal from './components/common/AuthModal.jsx'
@@ -33,6 +36,9 @@ export default function App() {
           <Route path="/game/spot" element={<SpotGame />} />
           <Route path="/game/2048" element={<Game2048 />} />
           <Route path="/game/mole" element={<MoleGame />} />
+          <Route path="/game/memory" element={<MemoryGame />} />
+          <Route path="/game/runner" element={<RunnerGame />} />
+          <Route path="/game/typing" element={<TypingGame />} />
           <Route path="/game/:id" element={<GamePlaceholder />} />
           <Route path="/store" element={<Store />} />
           <Route path="/notifications" element={<Notifications />} />
