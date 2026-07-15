@@ -33,6 +33,7 @@ export const games = [
   },
   {
     id: '2048',
+    implemented: true,
     number: '04',
     title: '2048 퍼즐',
     tagline: '같은 숫자를 합쳐 2048까지',
@@ -42,6 +43,7 @@ export const games = [
   },
   {
     id: 'mole',
+    implemented: true,
     number: '05',
     title: '두더지 잡기',
     tagline: '튀어나오는 순간을 노려라',

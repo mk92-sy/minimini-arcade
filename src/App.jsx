@@ -7,6 +7,8 @@ import Settings from './pages/Settings.jsx'
 import ReactionGame from './games/ReactionGame.jsx'
 import GuessGame from './games/GuessGame.jsx'
 import SpotGame from './games/SpotGame.jsx'
+import Game2048 from './games/Game2048.jsx'
+import MoleGame from './games/MoleGame.jsx'
 import Header from './components/common/Header.jsx'
 import BottomNav from './components/common/BottomNav.jsx'
 import AuthModal from './components/common/AuthModal.jsx'
@@ -29,6 +31,8 @@ export default function App() {
           <Route path="/game/reaction" element={<ReactionGame />} />
           <Route path="/game/guess" element={<GuessGame />} />
           <Route path="/game/spot" element={<SpotGame />} />
+          <Route path="/game/2048" element={<Game2048 />} />
+          <Route path="/game/mole" element={<MoleGame />} />
           <Route path="/game/:id" element={<GamePlaceholder />} />
           <Route path="/store" element={<Store />} />
           <Route path="/notifications" element={<Notifications />} />
