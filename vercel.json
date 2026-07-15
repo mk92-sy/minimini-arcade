@@ -4,5 +4,8 @@
     { "source": "/store", "destination": "/index.html" },
     { "source": "/notifications", "destination": "/index.html" },
     { "source": "/settings", "destination": "/index.html" }
+  ],
+  "crons": [
+    { "path": "/api/cron/daily-rank-payout", "schedule": "0 15 * * *" }
   ]
 }

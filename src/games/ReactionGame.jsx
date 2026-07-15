@@ -125,6 +125,7 @@ export default function ReactionGame() {
               gameId={GAME_ID}
               score={reactionMs}
               unit="ms"
+              order="asc"
               onRequestLogin={openAuthModal}
               onSubmitted={() => setLeaderboardRefreshSignal((n) => n + 1)}
             />

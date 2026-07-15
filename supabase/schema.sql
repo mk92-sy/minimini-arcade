@@ -97,7 +97,15 @@ create or replace function public.scores_enforce_daily_limit()
 returns trigger as $$
 declare
   existing_count int;
+  v_kst_time time;
 begin
+  -- 한국시간 23:00~24:00은 그날의 랭킹을 집계하는 시간이라 등록을 막습니다.
+  -- (다음날 00시에 이 시점 기준 순위로 1~3위 코인이 자동 지급됨 - run_daily_rank_payout 참고)
+  v_kst_time := (now() at time zone 'Asia/Seoul')::time;
+  if v_kst_time >= time '23:00:00' then
+    raise exception 'RANKING_LOCKED' using errcode = 'P0001';
+  end if;
+
   select count(*) into existing_count
   from public.scores
   where game_id = new.game_id
@@ -148,6 +156,63 @@ create table if not exists public.games (
 
 insert into public.games (id, order_direction) values ('reaction', 'asc')
 on conflict (id) do update set order_direction = excluded.order_direction;
+
+-- ─────────────────────────────────────────────────────────────
+-- 알림
+-- 로그인 여부와 상관없이 서버(트리거/함수/크론)가 발생시키는 이벤트를 기록합니다.
+-- 실제 문구는 프론트에서 type+부가정보를 조합해 렌더링합니다(다국어/문구 수정이 쉬움).
+-- insert 정책이 없어서 클라이언트가 직접 알림을 만들 수 없고, 전부 서버 쪽
+-- 트리거/함수(아래 notify_score_submitted, claim_coins_for_score,
+-- run_daily_rank_payout)를 통해서만 생성됩니다.
+-- ─────────────────────────────────────────────────────────────
+
+create table if not exists public.notifications (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  type text not null check (type in ('score_submitted', 'daily_play_reward', 'daily_rank_reward')),
+  game_id text,
+  amount integer,
+  rank integer,       -- daily_rank_reward 전용 (1/2/3)
+  reward_date date,   -- daily_rank_reward 전용: 몇 월 며칠자 랭킹 보상인지
+  read_at timestamptz,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists notifications_user_id_created_at_idx
+  on public.notifications (user_id, created_at desc);
+
+alter table public.notifications enable row level security;
+
+drop policy if exists "notifications_select_own" on public.notifications;
+create policy "notifications_select_own"
+  on public.notifications for select
+  using (auth.uid() = user_id);
+
+drop policy if exists "notifications_update_own" on public.notifications;
+create policy "notifications_update_own"
+  on public.notifications for update
+  using (auth.uid() = user_id)
+  with check (auth.uid() = user_id);
+
+drop policy if exists "notifications_delete_own" on public.notifications;
+create policy "notifications_delete_own"
+  on public.notifications for delete
+  using (auth.uid() = user_id);
+-- insert 정책 없음 -> 서버(트리거/함수)를 통해서만 생성됨
+
+create or replace function public.notify_score_submitted()
+returns trigger as $$
+begin
+  insert into public.notifications (user_id, type, game_id)
+  values (new.user_id, 'score_submitted', new.game_id);
+  return new;
+end;
+$$ language plpgsql security definer set search_path = public;
+
+drop trigger if exists scores_notify_trigger on public.scores;
+create trigger scores_notify_trigger
+  after insert on public.scores
+  for each row execute function public.notify_score_submitted();
 
 -- ─────────────────────────────────────────────────────────────
 -- 내 랭킹 / 총 참가자 수
@@ -213,6 +278,23 @@ $$;
 
 grant execute on function public.get_leaderboard_top(text, text, int) to anon, authenticated;
 
+-- 홈 화면 게임 카드에 "오늘 랭킹 등록 완료/가능"을 표시하기 위한 함수.
+-- 오늘(KST) 이 유저가 점수를 등록한 게임 id 목록을 돌려줍니다.
+create or replace function public.get_today_submitted_games(p_user_id uuid)
+returns text[]
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select coalesce(array_agg(distinct game_id), '{}')
+  from public.scores
+  where user_id = p_user_id
+    and (created_at at time zone 'Asia/Seoul')::date = (now() at time zone 'Asia/Seoul')::date;
+$$;
+
+grant execute on function public.get_today_submitted_games(uuid) to authenticated;
+
 -- 게임별 총 참가자 수 (메인 화면 카비닛 카드용)
 create or replace view public.game_participant_counts as
 select game_id, count(distinct user_id) as participants
@@ -229,11 +311,14 @@ grant select on public.game_participant_counts to anon, authenticated;
 --   (⚠️ 실제 광고 SDK 연동 전이라 프론트에서 3초 대기로 "시청"을 흉내만 냅니다.
 --   나중에 애드몹/카카오 애드핏 등을 붙일 때 src/lib/coins.js의 claimAdBonus
 --   호출부(시뮬레이션 부분)만 실제 광고 재생 완료 콜백으로 바꾸면 됩니다.)
--- - 그 게임에서 "이번 시즌 최초로" 3위/2위/1위 달성 시 각각 10/20/50코인,
---   게임당·시즌당 1회성 (분기가 바뀌면 다시 받을 수 있음 — scores.season과
---   동일한 기준으로 리셋되도록 coin_transactions에도 season 컬럼을 둠)
--- 지급은 claim_coins_for_score() / claim_ad_bonus()가 처리하고,
--- coin_transactions의 unique 인덱스가 중복 지급을 막는 안전장치입니다(멱등).
+-- - 1/2/3위 보상은 더 이상 "즉시 지급"이 아닙니다. 매일 한국시간 23:00까지의
+--   랭킹을 그날 기준으로 보고, 다음날 00시에 run_daily_rank_payout()이
+--   일괄 지급합니다(로그인 여부 무관). 23:00~24:00은 그 집계를 위해 랭킹
+--   등록 자체를 막아둡니다(scores_enforce_daily_limit 참고).
+--   지급 시점에 계정이 이미 탈퇴됐다면 그 유저의 점수도 cascade로 같이
+--   삭제된 상태라, 자동으로 다음 등수가 그 자리를 대신하게 됩니다.
+-- 지급은 claim_coins_for_score() / claim_ad_bonus() / run_daily_rank_payout()이
+-- 처리하고, coin_transactions의 unique 인덱스가 중복 지급을 막는 안전장치입니다(멱등).
 -- ─────────────────────────────────────────────────────────────
 
 create table if not exists public.coin_transactions (
@@ -242,7 +327,7 @@ create table if not exists public.coin_transactions (
   game_id text not null,
   type text not null,
   amount integer not null,
-  reward_date date, -- daily_play/ad_bonus 전용 (KST 기준 날짜). 마일스톤 타입은 null.
+  reward_date date, -- daily_play/ad_bonus/daily_rank_top* 전용 (KST 기준 날짜)
   season text not null default public.current_season(),
   created_at timestamptz not null default now()
 );
@@ -251,7 +336,11 @@ alter table public.coin_transactions add column if not exists season text not nu
 
 alter table public.coin_transactions drop constraint if exists coin_transactions_type_check;
 alter table public.coin_transactions add constraint coin_transactions_type_check
-  check (type in ('daily_play', 'ad_bonus', 'rank_top3', 'rank_top2', 'rank_top1'));
+  check (type in (
+    'daily_play', 'ad_bonus',
+    'rank_top3', 'rank_top2', 'rank_top1', -- 예전 버전(즉시 지급)의 흔적, 더 이상 새로 생성되지 않음
+    'daily_rank_top3', 'daily_rank_top2', 'daily_rank_top1'
+  ));
 
 -- 게임당 하루 1회: 플레이 보상
 create unique index if not exists coin_tx_daily_unique
@@ -263,11 +352,10 @@ create unique index if not exists coin_tx_ad_bonus_unique
   on public.coin_transactions (user_id, game_id, reward_date)
   where type = 'ad_bonus';
 
--- 게임당·시즌당 1회: 순위 마일스톤 (이전 버전엔 season이 없어서 평생 1회였음 -> 재생성)
-drop index if exists public.coin_tx_milestone_unique;
-create unique index if not exists coin_tx_milestone_season_unique
-  on public.coin_transactions (user_id, game_id, type, season)
-  where type in ('rank_top3', 'rank_top2', 'rank_top1');
+-- 게임당·날짜당 1회: 일일 순위 보상 (run_daily_rank_payout이 자정에 지급, 중복 실행돼도 안전)
+create unique index if not exists coin_tx_daily_rank_unique
+  on public.coin_transactions (user_id, game_id, type, reward_date)
+  where type in ('daily_rank_top3', 'daily_rank_top2', 'daily_rank_top1');
 
 alter table public.coin_transactions enable row level security;
 
@@ -286,72 +374,26 @@ as $$
 declare
   v_user uuid := auth.uid();
   v_today date := (now() at time zone 'Asia/Seoul')::date;
-  v_order text;
-  v_rank bigint;
 begin
   if v_user is null then
     raise exception 'NOT_AUTHENTICATED';
   end if;
 
-  -- 1) 출석(플레이) 보상: 하루 1코인, 게임당 1회
+  -- 출석(플레이) 보상: 하루 1코인, 게임당 1회.
+  -- 1/2/3위 보상은 더 이상 여기서 즉시 지급하지 않습니다 - run_daily_rank_payout()이
+  -- 매일 자정에 전날 23:00까지의 랭킹을 기준으로 일괄 지급합니다.
   begin
     insert into public.coin_transactions (user_id, game_id, type, amount, reward_date)
     values (v_user, p_game_id, 'daily_play', 1, v_today);
     update public.profiles set coins = coins + 1 where id = v_user;
+    insert into public.notifications (user_id, type, game_id, amount)
+    values (v_user, 'daily_play_reward', p_game_id, 1);
     award_type := 'daily_play';
     amount := 1;
     return next;
   exception when unique_violation then
     null; -- 오늘 이미 받음
   end;
-
-  -- 2) 순위 마일스톤: 이 게임에서의 현재(이번 시즌) 순위를 확인
-  --    같은 시즌 안에서 순위가 오르내려도(예: 2위 → 5위 → 2위) 이미 해당 등수를
-  --    받았다면 unique 인덱스가 막아주므로 중복 지급되지 않습니다.
-  select order_direction into v_order from public.games where id = p_game_id;
-  if v_order is null then
-    v_order := 'desc';
-  end if;
-
-  select rank into v_rank from public.get_my_rank(p_game_id, v_user, v_order) limit 1;
-
-  if v_rank is not null then
-    if v_rank <= 3 then
-      begin
-        insert into public.coin_transactions (user_id, game_id, type, amount)
-        values (v_user, p_game_id, 'rank_top3', 10);
-        update public.profiles set coins = coins + 10 where id = v_user;
-        award_type := 'rank_top3';
-        amount := 10;
-        return next;
-      exception when unique_violation then null;
-      end;
-    end if;
-
-    if v_rank <= 2 then
-      begin
-        insert into public.coin_transactions (user_id, game_id, type, amount)
-        values (v_user, p_game_id, 'rank_top2', 20);
-        update public.profiles set coins = coins + 20 where id = v_user;
-        award_type := 'rank_top2';
-        amount := 20;
-        return next;
-      exception when unique_violation then null;
-      end;
-    end if;
-
-    if v_rank <= 1 then
-      begin
-        insert into public.coin_transactions (user_id, game_id, type, amount)
-        values (v_user, p_game_id, 'rank_top1', 50);
-        update public.profiles set coins = coins + 50 where id = v_user;
-        award_type := 'rank_top1';
-        amount := 50;
-        return next;
-      exception when unique_violation then null;
-      end;
-    end if;
-  end if;
 
   return;
 end;
@@ -402,6 +444,79 @@ end;
 $$;
 
 grant execute on function public.claim_ad_bonus(text) to authenticated;
+
+-- ─────────────────────────────────────────────────────────────
+-- 매일 자정(KST) 1~3위 코인 일괄 지급
+-- Vercel Cron(/api/cron/daily-rank-payout.js)이 하루 한 번 service_role 키로
+-- 호출합니다. "어제"(호출 시점 기준 KST 전날) 날짜로 각 게임의 현재 상위 3명을
+-- 뽑아 10/20/50코인을 지급하고 알림을 남깁니다.
+--
+-- - 23:00~24:00엔 랭킹 등록이 막혀있으므로(scores_enforce_daily_limit), 자정에
+--   계산하는 "현재" 순위는 사실상 그날 23:00 시점의 순위와 동일합니다.
+-- - 지급 시점에 이미 탈퇴한 계정은 scores가 cascade로 같이 삭제된 상태라
+--   자동으로 순위 계산에서 빠지고, 다음 등수가 자연스럽게 그 자리를 대신합니다.
+-- - unique 인덱스(coin_tx_daily_rank_unique) 덕분에 크론이 중복 실행되거나
+--   재시도되어도 같은 유저에게 같은 날짜로 두 번 지급되지 않습니다(멱등).
+-- - anon/authenticated에는 실행 권한을 주지 않습니다 (일반 유저가 직접 호출하면
+--   "오늘" 기준으로 너무 이른 시점에 지급을 유도할 수 있음) — service_role만 가능.
+-- ─────────────────────────────────────────────────────────────
+
+create or replace function public.run_daily_rank_payout()
+returns table (game_id text, rank int, user_id uuid, amount int, awarded boolean)
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_reward_date date := (now() at time zone 'Asia/Seoul')::date - 1;
+  g record;
+  top record;
+  rnk int;
+  amt int;
+  award_type_name text;
+begin
+  for g in select id, order_direction from public.games loop
+    rnk := 0;
+
+    for top in select * from public.get_leaderboard_top(g.id, g.order_direction, 3) loop
+      rnk := rnk + 1;
+      amt := case rnk when 1 then 50 when 2 then 20 when 3 then 10 else 0 end;
+      award_type_name := 'daily_rank_top' || rnk;
+
+      if amt > 0 then
+        begin
+          insert into public.coin_transactions (user_id, game_id, type, amount, reward_date)
+          values (top.user_id, g.id, award_type_name, amt, v_reward_date);
+
+          update public.profiles set coins = coins + amt where id = top.user_id;
+
+          insert into public.notifications (user_id, type, game_id, amount, rank, reward_date)
+          values (top.user_id, 'daily_rank_reward', g.id, amt, rnk, v_reward_date);
+
+          game_id := g.id;
+          rank := rnk;
+          user_id := top.user_id;
+          amount := amt;
+          awarded := true;
+          return next;
+        exception when unique_violation then
+          game_id := g.id;
+          rank := rnk;
+          user_id := top.user_id;
+          amount := amt;
+          awarded := false; -- 이미 지급됨 (크론 중복 실행 등)
+          return next;
+        end;
+      end if;
+    end loop;
+  end loop;
+
+  return;
+end;
+$$;
+
+revoke all on function public.run_daily_rank_payout() from public;
+grant execute on function public.run_daily_rank_payout() to service_role;
 
 -- ─────────────────────────────────────────────────────────────
 -- likes: 게임별 좋아요(하트). 사용자당 게임당 1개만 (토글 insert/delete).

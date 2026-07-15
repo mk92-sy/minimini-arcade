@@ -2,11 +2,30 @@ import { Link } from 'react-router-dom'
 import CabinetIcon from './CabinetIcon.jsx'
 import { IconHeart, IconUsers } from './common/icons.jsx'
 import { formatChallengerCount } from '../lib/gameStats.js'
+import { useAuth } from '../context/AuthContext.jsx'
 
 export default function GameCard({ game, stats }) {
+  const { user } = useAuth()
   const style = { '--tint': game.tint }
   const likeCount = stats?.likeCount ?? 0
   const challengerCount = stats?.challengerCount ?? 0
+
+  let statusText
+  let statusVariant
+
+  if (!game.implemented) {
+    statusText = '준비중이에요!'
+    statusVariant = 'pending'
+  } else if (!user) {
+    statusText = '지금 바로 플레이'
+    statusVariant = 'ready'
+  } else if (stats?.submittedToday) {
+    statusText = '일일 랭킹 등록 완료'
+    statusVariant = 'ready'
+  } else {
+    statusText = '일일 랭킹 등록 가능'
+    statusVariant = 'ready'
+  }
 
   return (
     <Link to={game.path} className="cabinet" style={style}>
@@ -34,9 +53,9 @@ export default function GameCard({ game, stats }) {
           </span>
         </div>
 
-        <div className="cabinet__status">
+        <div className={`cabinet__status cabinet__status--${statusVariant}`}>
           <span className="cabinet__led" aria-hidden="true" />
-          READY
+          {statusText}
         </div>
       </div>
     </Link>

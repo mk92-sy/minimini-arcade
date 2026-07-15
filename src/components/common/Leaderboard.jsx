@@ -3,10 +3,18 @@ import { fetchLeaderboard, fetchMyRank } from '../../lib/scores.js'
 import { useAuth } from '../../context/AuthContext.jsx'
 
 const CACHE_TTL = 60 * 60 * 1000 // 1시간
-const CACHE_VERSION = 'v2' // 버전을 올리면 예전에 캐시된(예: 데이터 적었을 때) 값이 자동 무효화됨
+const CACHE_VERSION = 'v3' // 버전을 올리면 예전에 캐시된 값이 자동 무효화됨
 
-function cacheKey(gameId, order, userId) {
-  return `mini-arcade:leaderboard:${CACHE_VERSION}:${gameId}:${order}:${userId ?? 'anon'}`
+// top10은 "누가 보든 똑같은" 공개 데이터라서 gameId+order로만 키를 잡아요.
+// (userId를 섞으면 로그인/로그아웃할 때마다 캐시가 쪼개져서, 로그아웃 후
+// 예전 stale 캐시를 다시 보여주는 버그가 생겨요 — 실제로 겪었던 문제)
+function leaderboardCacheKey(gameId, order) {
+  return `mini-arcade:leaderboard:${CACHE_VERSION}:${gameId}:${order}`
+}
+
+// 내 순위는 개인 데이터라서 userId별로 따로 캐시해요.
+function myRankCacheKey(gameId, order, userId) {
+  return `mini-arcade:myrank:${CACHE_VERSION}:${gameId}:${order}:${userId}`
 }
 
 function readCache(key) {
@@ -50,8 +58,8 @@ function MedalIcon({ rank }) {
 /**
  * 공용 랭킹 보드. 최대 10위까지 보여주고, 1~3위는 메달 아이콘으로 표시합니다.
  * 하단에는 로그인한 사용자의 내 순위/총 참가자 수/상위 퍼센트를 보여줍니다.
- * 실시간 조회가 아니라 1시간 단위로 캐시해서, 같은 시간 내 재방문/새로고침에는
- * API를 다시 호출하지 않습니다 (내 순위도 함께 캐시됨).
+ * top10(공개 데이터)과 내 순위(개인 데이터)는 서로 다른 캐시 키를 써요 —
+ * 그래야 로그인/로그아웃을 오가도 top10이 서로 다른 stale 캐시를 보여주지 않습니다.
  * @param {string} gameId - games.js의 id
  * @param {'asc'|'desc'} order - asc: 점수 낮을수록 상위 (반응속도 등), desc: 점수 높을수록 상위
  * @param {string} unit - 점수 뒤에 붙일 단위 (예: 'ms', '점', '회')
@@ -73,29 +81,33 @@ export default function Leaderboard({ gameId, order = 'desc', unit = '', limit =
 
   useEffect(() => {
     let cancelled = false
-    const key = cacheKey(gameId, order, userId)
+
+    const lbKey = leaderboardCacheKey(gameId, order)
+    const rankKey = userId ? myRankCacheKey(gameId, order, userId) : null
 
     // refreshSignal이 이전과 달라졌다면(= 방금 내가 등록해서 데이터가 바뀐 게 확실함)
-    // 캐시를 아예 무시하고 강제로 새로 불러옵니다. 그 외의 일반적인 마운트/재방문은
-    // 캐시가 있으면 그대로 사용합니다.
+    // 캐시를 아예 무시하고 강제로 새로 불러옵니다.
     const isForced = refreshSignal !== lastRefreshSignal.current
     lastRefreshSignal.current = refreshSignal
 
-    if (!isForced) {
-      const cached = readCache(key)
-      if (cached) {
-        setRows(cached.rows)
-        setMyRank(cached.myRank)
-        setUpdatedAt(cached.fetchedAt)
-        setStatus('ready')
-        return
-      }
+    const cachedRows = !isForced ? readCache(lbKey) : null
+    const cachedRank = !isForced && rankKey ? readCache(rankKey) : null
+
+    const needRowsFetch = !cachedRows
+    const needRankFetch = Boolean(userId) && !cachedRank
+
+    if (!needRowsFetch && !needRankFetch) {
+      setRows(cachedRows.rows)
+      setMyRank(userId && cachedRank ? cachedRank.myRank : null)
+      setUpdatedAt(userId && cachedRank ? Math.max(cachedRows.fetchedAt, cachedRank.fetchedAt) : cachedRows.fetchedAt)
+      setStatus('ready')
+      return
     }
 
     setStatus('loading')
     Promise.all([
-      fetchLeaderboard(gameId, { order, limit: cappedLimit }),
-      fetchMyRank(gameId, userId, order),
+      needRowsFetch ? fetchLeaderboard(gameId, { order, limit: cappedLimit }) : Promise.resolve({ data: cachedRows.rows, error: null }),
+      needRankFetch ? fetchMyRank(gameId, userId, order) : Promise.resolve({ data: userId && cachedRank ? cachedRank.myRank : null, error: null }),
     ]).then(([lb, mine]) => {
       if (cancelled) return
       if (lb.error) {
@@ -109,11 +121,15 @@ export default function Leaderboard({ gameId, order = 'desc', unit = '', limit =
       if (mine.error) {
         console.warn('[leaderboard] 내 순위를 불러오지 못했어요.', mine.error)
       }
-      const fetchedAt = Date.now()
+
+      const now = Date.now()
       setRows(lb.data)
-      setMyRank(mine.data)
-      setUpdatedAt(fetchedAt)
-      writeCache(key, { rows: lb.data, myRank: mine.data, fetchedAt })
+      setMyRank(userId ? mine.data : null)
+      setUpdatedAt(now)
+
+      if (needRowsFetch) writeCache(lbKey, { rows: lb.data, fetchedAt: now })
+      if (needRankFetch && rankKey) writeCache(rankKey, { myRank: mine.data, fetchedAt: now })
+
       setStatus('ready')
     })
 

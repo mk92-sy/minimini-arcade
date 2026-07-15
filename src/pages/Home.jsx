@@ -1,22 +1,34 @@
 import { useEffect, useState } from 'react'
 import { games } from '../data/games.js'
 import GameCard from '../components/GameCard.jsx'
-import { fetchGameStats } from '../lib/gameStats.js'
+import { fetchGameStats, fetchTodaySubmittedGameIds } from '../lib/gameStats.js'
+import { useAuth } from '../context/AuthContext.jsx'
 import usePageTitle from '../hooks/usePageTitle.js'
 
 export default function Home() {
   usePageTitle('게임')
+  const { user } = useAuth()
   const [stats, setStats] = useState({})
 
   useEffect(() => {
     let cancelled = false
-    fetchGameStats().then((map) => {
-      if (!cancelled) setStats(map)
-    })
+    Promise.all([fetchGameStats(), fetchTodaySubmittedGameIds(user?.id ?? null)]).then(
+      ([statMap, submittedIds]) => {
+        if (cancelled) return
+        const merged = {}
+        for (const game of games) {
+          merged[game.id] = {
+            ...statMap[game.id],
+            submittedToday: submittedIds.has(game.id),
+          }
+        }
+        setStats(merged)
+      },
+    )
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [user?.id])
 
   return (
     <div className="hub">

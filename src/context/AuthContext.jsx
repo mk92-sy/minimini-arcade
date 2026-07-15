@@ -138,12 +138,25 @@ export function AuthProvider({ children }) {
    * 점수 등록 직후 claimCoinsForScore() 결과를 넘겨받아, 실제로 지급된 항목이
    * 있으면 잔액을 즉시 반영하고(서버 update와 동일한 금액이라 안전) 획득 모달을 띄웁니다.
    * gameId는 모달에서 "광고 보고 +2코인" 버튼이 어느 게임에 대해 지급 요청할지 알기 위해 필요합니다.
+   * extra: { isNewRecord, rank, total } - 신기록 축하 연출 + 순위 미리보기용.
    */
-  const notifyCoinsAwarded = useCallback((awards, gameId) => {
-    if (!awards || awards.length === 0) return
-    const total = awards.reduce((sum, a) => sum + a.amount, 0)
-    setProfile((p) => (p ? { ...p, coins: p.coins + total } : p))
-    setCoinAward({ awards, total, gameId })
+  const notifyCoinsAwarded = useCallback((awards, gameId, extra = {}) => {
+    const list = awards ?? []
+    const hasRankInfo = extra.rank != null && extra.total != null
+    if (list.length === 0 && !extra.isNewRecord && !hasRankInfo) return
+
+    const total = list.reduce((sum, a) => sum + a.amount, 0)
+    if (total > 0) {
+      setProfile((p) => (p ? { ...p, coins: p.coins + total } : p))
+    }
+    setCoinAward({
+      awards: list,
+      total,
+      gameId,
+      isNewRecord: Boolean(extra.isNewRecord),
+      rank: extra.rank ?? null,
+      rankTotal: extra.total ?? null,
+    })
   }, [])
 
   /**

@@ -3,15 +3,21 @@ import { supabase } from './supabaseClient.js'
 export const COIN_AWARD_LABELS = {
   daily_play: '이 게임 오늘의 플레이 보상',
   ad_bonus: '광고 시청 보너스',
+  daily_rank_top3: '어제 3위 랭킹 보상',
+  daily_rank_top2: '어제 2위 랭킹 보상',
+  daily_rank_top1: '어제 1위 랭킹 보상',
+  // 예전 버전(즉시 지급 마일스톤)의 흔적 — 새로 지급되진 않지만, 과거 기록에 남아있을 수 있어 라벨만 유지
   rank_top3: '이번 시즌 첫 3위 달성 보너스',
   rank_top2: '이번 시즌 첫 2위 달성 보너스',
   rank_top1: '이번 시즌 첫 1위 달성 보너스',
 }
 
 /**
- * 점수 등록 직후 호출합니다. 오늘 처음 플레이했는지 / 이 게임에서 이번 시즌
- * 처음으로 3·2·1위를 달성했는지를 서버(DB 함수)가 판단해서 코인을 지급하고,
- * 실제로 지급된 항목만 배열로 돌려줍니다 (중복 지급은 서버가 막아줌).
+ * 점수 등록 직후 호출합니다. 오늘 처음 플레이했는지를 서버(DB 함수)가 판단해서
+ * 코인을 지급하고, 실제로 지급된 항목만 배열로 돌려줍니다 (중복 지급은 서버가 막아줌).
+ * 1/2/3위 보상은 더 이상 여기서 즉시 지급되지 않습니다 — 매일 자정 배치 작업
+ * (run_daily_rank_payout, api/cron/daily-rank-payout.js)이 전날 순위를 기준으로
+ * 일괄 지급하고, 결과는 /notifications 페이지에서 확인할 수 있어요.
  * @returns {Promise<{ awards: { award_type: string, amount: number }[], error: Error|null }>}
  */
 export async function claimCoinsForScore(gameId) {

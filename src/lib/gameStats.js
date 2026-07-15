@@ -24,6 +24,22 @@ export async function fetchGameStats() {
 }
 
 /**
+ * 오늘(KST) 로그인한 사용자가 랭킹을 등록한 게임 id들을 Set으로 돌려줍니다.
+ * 비로그인이면 빈 Set.
+ */
+export async function fetchTodaySubmittedGameIds(userId) {
+  if (!supabase || !userId) return new Set()
+
+  const { data, error } = await supabase.rpc('get_today_submitted_games', { p_user_id: userId })
+  if (error) {
+    console.warn('[gameStats] 오늘 등록 여부를 불러오지 못했어요.', error)
+    return new Set()
+  }
+
+  return new Set(data ?? [])
+}
+
+/**
  * 9,999명까지는 콤마 구분 숫자로, 그 이상은 "9,999+"로 표시.
  */
 export function formatChallengerCount(count) {

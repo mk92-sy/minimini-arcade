@@ -3,6 +3,7 @@
 export const games = [
   {
     id: 'reaction',
+    implemented: true,
     number: '01',
     title: '반응속도 테스트',
     tagline: '화면이 바뀌는 순간 클릭',

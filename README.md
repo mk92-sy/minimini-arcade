@@ -94,8 +94,9 @@ vercel dev
 - 최대 10위까지만 보여주고, 1·2·3위는 금/은/동 메달 아이콘으로 표시돼요.
 - top-10과 "내 순위"는 둘 다 **한 사람의 베스트 기록만** 집계해요(`get_leaderboard_top` / `get_my_rank` DB 함수). 하루 1회 제한 때문에 한 사람이 여러 날에 걸쳐 여러 행을 가질 수 있는데, 그걸 그대로 보여주면 같은 사람이 순위표를 도배하는 것처럼 보일 수 있어서 이렇게 통일했어요.
 - 리스트 아래에는 로그인한 사용자의 **내 순위 박스**가 항상 떠요: "내 순위 N위 · 총 M명 중 상위 P%". 아직 기록이 없으면 "아직 등록한 기록이 없어요", 로그아웃 상태면 "로그인하면 내 순위를 확인할 수 있어요"가 표시돼요.
-- 실시간 조회가 아니라 **1시간 단위로 캐시**돼요: 처음 불러올 때 `localStorage`에 결과(top-10 + 내 순위)와 조회 시각을 함께 저장해두고, 1시간이 지나기 전까지는 새로고침해도 Supabase에 다시 요청하지 않습니다. 리더보드 위에 "⏱ 랭킹은 1시간마다 업데이트돼요 · 마지막 업데이트 HH:MM" 안내 문구가 항상 떠요.
-- 단, **내가 방금 점수를 등록했을 때는 예외**예요. 데이터가 확실히 바뀐 시점이니 그 순간만 캐시를 건너뛰고 강제로 새로 불러온 뒤, 그 결과로 캐시를 다시 채워서 다음 1시간은 또 캐시를 씁니다 (`Leaderboard`의 `refreshSignal` prop, `SubmitScoreForm`의 `onSubmitted` 콜백으로 연결돼 있어요). 좋아요 토글이나 단순 새로고침 등 "데이터가 안 바뀐 게 확실한" 경우는 계속 캐시를 씁니다.
+- 실시간 조회가 아니라 **1시간 단위로 캐시**돼요: 처음 불러올 때 `localStorage`에 결과와 조회 시각을 저장해두고, 1시간이 지나기 전까지는 새로고침해도 Supabase에 다시 요청하지 않습니다. 리더보드 위에 "⏱ 랭킹은 1시간마다 업데이트돼요 · 마지막 업데이트 HH:MM" 안내 문구가 항상 떠요.
+- top10(누가 보든 똑같은 공개 데이터)과 내 순위(개인 데이터)는 **서로 다른 캐시 키**를 써요. top10은 `gameId+order`로만, 내 순위는 `gameId+order+userId`로 키를 잡습니다. (예전엔 top10 캐시에도 userId를 섞어놔서, 로그인 상태로 등록한 직후 로그아웃하면 로그아웃 시점의 별개 캐시가 비어있어 "방금 등록한 기록이 사라진 것처럼" 보이는 버그가 있었어요 — 지금은 고쳐졌습니다.)
+- 내가 방금 점수를 등록했을 때는 예외예요. 데이터가 확실히 바뀐 시점이니 그 순간만 캐시를 건너뛰고 강제로 새로 불러온 뒤, 그 결과로 (공개) top10 캐시와 (개인) 내 순위 캐시를 둘 다 다시 채웁니다 (`Leaderboard`의 `refreshSignal` prop, `SubmitScoreForm`의 `onSubmitted` 콜백으로 연결돼 있어요). 좋아요 토글이나 단순 새로고침 등 "데이터가 안 바뀐 게 확실한" 경우는 계속 캐시를 씁니다.
 - 데스크탑(뷰포트 860px 이상)에서는 게임 화면 오른쪽에 고정 표시되고, 모바일에서는 게임 아래로 쌓여요.
 
 ### 좋아요(하트) & 도전자 수
@@ -130,7 +131,8 @@ vercel dev
 | 변수 | 어디에 필요한가 | 필수 여부 |
 |---|---|---|
 | `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` | 로그인 · 랭킹 조회/등록 | 없으면 전부 비활성 |
-| `SUPABASE_SERVICE_ROLE_KEY` | 회원 탈퇴 처리 (`/api/delete-account.js`, 서버 전용) | 없으면 탈퇴 버튼 클릭 시 에러 |
+| `SUPABASE_SERVICE_ROLE_KEY` | 회원 탈퇴 처리, 매일 자정 순위 코인 일괄 지급 (서버 전용) | 없으면 탈퇴/일괄 지급 실패 |
+| `CRON_SECRET` | 자정 배치 크론 엔드포인트 보호용 임의 문자열 (서버 전용) | 없으면 크론이 401로 실패 |
 | `DEVTOOLS_ALLOWED_IPS` | 개발자도구 가드 예외 IP (서버 전용, Vercel 대시보드에 등록) | 없으면 모든 방문자에게 가드 적용 |
 
 구글/카카오 로그인 키는 `.env`가 아니라 **Supabase 대시보드**에 등록합니다 (위 "회원가입/로그인 설정" 참고).
@@ -140,7 +142,7 @@ vercel dev
 1. GitHub에 이 프로젝트를 올리기
 2. [vercel.com](https://vercel.com)에서 New Project → 해당 레포 선택
 3. Framework Preset: **Vite** 자동 인식 (Build: `vite build`, Output: `dist`)
-4. Environment Variables에 `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `DEVTOOLS_ALLOWED_IPS`(선택) 추가
+4. Environment Variables에 `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `CRON_SECRET`, `DEVTOOLS_ALLOWED_IPS`(선택) 추가
 5. Deploy
 
 `vercel.json`은 `/game/*` 경로만 명시적으로 `index.html`로 rewrite해서, `/game/reaction` 새로고침해도 404가 안 뜹니다. `/api/*`는 애초에 규칙 대상이 아니라 항상 정상 동작합니다.
@@ -151,8 +153,10 @@ vercel dev
 api/
   devtools-guard.js         # Vercel 서버리스 함수: 요청 IP가 허용 목록인지 확인
   delete-account.js          # Vercel 서버리스 함수: service_role로 계정 완전 삭제
+  cron/
+    daily-rank-payout.js       # Vercel Cron(매일 KST 00시): 전날 1~3위 코인 일괄 지급
 supabase/
-  schema.sql                 # profiles/scores/likes/deleted_accounts 테이블, RLS, DB 함수들
+  schema.sql                 # profiles/scores/likes/notifications/deleted_accounts 테이블, RLS, DB 함수들
 src/
   context/
     AuthContext.jsx           # 로그인 세션/프로필 상태, 로그인 모달, 탈퇴, 재가입 차단 체크
@@ -168,6 +172,9 @@ src/
     likes.js                       # 좋아요 토글 + 개수 조회
     gameStats.js                    # 홈 화면 카드용 좋아요/도전자 수 집계
     dailyLimit.js                    # 로컬 "오늘 등록했는지" 캐시 (UX 편의용)
+    rankingLock.js                    # 23:00~24:00 KST 등록 잠금 시간 클라이언트 체크
+    notifications.js                   # 알림 목록 조회 / 모두읽음 / 모두삭제
+    relativeTime.js                     # "N분 전" 상대 시간 포맷
   data/games.js                  # 8개 게임 메타데이터
   components/
     GameCard.jsx, CabinetIcon.jsx   # 메인 화면 전용 (좋아요/도전자 수 표시 포함)
@@ -176,7 +183,7 @@ src/
       AuthButton.jsx                  # 우측 상단 고정 로그인/계정 버튼
       AuthModal.jsx                    # 로그인(구글/카카오) · 계정(닉네임 변경, 탈퇴, 로그아웃) 모달
       Leaderboard.jsx                   # 랭킹 보드 (최대 10위, 메달, 내 순위 박스, 1시간 캐시)
-      SubmitScoreForm.jsx               # 점수 등록 (로그인 필요 + 확인 다이얼로그 + 하루 제한)
+      SubmitScoreForm.jsx               # 점수 등록 (로그인 필요 + 확인 다이얼로그 + 하루/집계시간 제한)
       LikeButton.jsx                     # 좋아요(하트) 토글 버튼
       ConfirmDialog.jsx                   # 범용 확인 다이얼로그
       ShareButton.jsx                      # SNS 공유 (아이콘 전용)
@@ -185,6 +192,7 @@ src/
     ReactionGame.jsx          # 반응속도 테스트 (완성, 2단 레이아웃 적용)
   pages/
     Home.jsx, GamePlaceholder.jsx
+    Notifications.jsx          # 알림 목록 (랭킹 등록/일일 보상/어제 순위 보상)
   styles/index.css
 ```
 
@@ -211,6 +219,55 @@ src/
 
 - `usePageTitle('페이지명')` 훅으로 각 페이지가 `document.title`을 "페이지명 | minimini-arcade" 형태로 설정해요. 새 페이지 만들 때 컴포넌트 최상단에서 호출하면 됩니다.
 - `index.html`에 description/robots/canonical/OG/Twitter 메타 태그가 채워져 있어요. 도메인이 바뀌면 `canonical`/`og:url`도 같이 수정해주세요.
+
+### 게임 카드 상태 표시
+
+- `games.js`의 각 게임 항목에 `implemented: true/false`가 있어요. `false`(아직 안 만든 게임)면 카드 상태등이 노란색 + "준비중이에요!"로 표시돼요.
+- 구현된 게임은 로그인 여부/오늘 등록 여부에 따라 "지금 바로 플레이" → "일일 랭킹 등록 가능" → "일일 랭킹 등록 완료"로 문구가 바뀌어요. 오늘 등록 여부는 `get_today_submitted_games()` DB 함수로 확인합니다.
+- 새 게임을 실제로 구현하면 `games.js`에 `implemented: true`를 추가해주세요.
+
+### 신기록 축하 연출 (코인 모달)
+
+- 점수 등록 시 제출 전/후로 `fetchMyRank()`를 두 번 호출해서 "이전 최고 기록보다 좋아졌는지"(신기록 여부)와 "제출 직후 순위/전체 인원"을 계산해요. 새 DB 함수 없이 기존 랭킹 조회 로직만 재사용했어요.
+- 신기록이면 코인 모달에 Lottie 폭죽 애니메이션(`src/assets/confettiAnimation.json`, `lottie-react`로 재생) + "NEW RECORD" + 랜덤 축하 코멘트가 떠요. 외부 에셋 없이 파티클 20개짜리 폭죽을 직접 절차적으로 생성한 JSON이에요.
+- 신기록 여부와 무관하게, 순위 정보가 있으면 "현재 예상 순위 N위 · 전체 M명 중 상위 P%"도 항상 보여줘요. 이건 실제 리더보드(1시간 캐시)보다 먼저 보여주는 즉석 미리보기예요.
+
+### 테스트 데이터 완전 초기화
+
+1. Supabase 대시보드 **Authentication → Users**에서 계정을 전부 삭제하세요. `profiles`/`scores`/`likes`/`coin_transactions`가 전부 `auth.users`를 참조하는 `on delete cascade`라 자동으로 같이 지워집니다.
+2. `auth.users`가 참조하지 않는 나머지 테이블은 SQL Editor에서 직접 비워주세요:
+   ```sql
+   truncate table public.deleted_accounts;
+   truncate table public.scores;
+   truncate table public.likes;
+   truncate table public.profiles;
+   truncate table public.coin_transactions; -- ⚠️ 꼭 포함하세요
+   ```
+   `coin_transactions`를 빼먹으면, 같은 구글/카카오 계정으로 재로그인했을 때(=같은 `user_id`가 재사용됨) 예전 테스트에서 받았던 "오늘의 플레이 보상"이나 순위 마일스톤이 여전히 DB에 남아있어서, unique 인덱스가 "이미 받음"으로 조용히 막아버려 코인이 0개 지급되는 것처럼 보여요 (에러도 안 뜸).
+
+### 1~3위 코인 보상 — 매일 자정 일괄 지급으로 변경
+
+- 예전엔 3/2/1위를 처음 찍는 순간 즉시 지급했는데, 이제는 **매일 한국시간(KST) 00시에 "전날" 순위를 기준으로 일괄 지급**합니다. 금액은 그대로 3위 10 / 2위 20 / 1위 50코인.
+- 한국시간 **23:00~24:00은 랭킹 등록 자체가 막혀요** (`scores_enforce_daily_limit` 트리거가 `RANKING_LOCKED` 에러로 거부). 이 시간 동안 게임 결과 화면에는 다이얼로그 없이 "⏳ 랭킹 집계 중입니다. 자정 이후 다시 시도해주세요." 안내만 보여요. 등록이 막혀있으니 자정에 계산하는 "현재 순위"는 사실상 23:00 시점 순위와 동일합니다.
+- 지급은 **Vercel Cron**(`vercel.json`의 `crons`, 매일 UTC 15:00 = KST 00:00 실행)이 `/api/cron/daily-rank-payout.js`를 호출 → 그 안에서 service_role 키로 DB 함수 `run_daily_rank_payout()`을 실행하는 구조예요. 이 함수는 `service_role`에게만 실행 권한이 있어서 일반 유저가 직접 호출할 수 없습니다.
+- **로그인 여부와 무관하게** 지급돼요(서버 배치 작업이라 당사자가 접속해있을 필요가 없음). 지급 시점에 이미 탈퇴한 계정이라면 그 유저의 점수도 cascade로 같이 지워진 상태라 자동으로 순위 계산에서 빠지고, 다음 등수가 자연스럽게 그 자리를 대신합니다.
+- 크론이 중복 실행되거나 재시도돼도 `coin_transactions`의 unique 인덱스(유저·게임·타입·날짜 조합)가 중복 지급을 막아요(멱등).
+- Vercel Cron Jobs는 플랜에 따라 제약이 있을 수 있어요(예: Hobby 플랜은 하루 1회 정도로 제한). Vercel 대시보드에서 프로젝트의 **Cron Jobs** 탭에 스케줄이 잘 등록됐는지 배포 후 확인해주세요.
+- 수동으로 한 번 테스트해보고 싶다면(배포 후):
+  ```bash
+  curl -X POST https://minimini-arcade.vercel.app/api/cron/daily-rank-payout \
+    -H "Authorization: Bearer <CRON_SECRET 값>"
+  ```
+
+### 알림 페이지
+
+- `/notifications`에서 내 알림을 리스트로 볼 수 있어요: 랭킹 등록, 일일 플레이 보상, 어제 순위 보상(1~3위) 세 종류.
+- 전부 **서버(트리거/함수)가 자동으로 생성**해요 — 클라이언트가 직접 알림을 만들 수 없도록 `notifications` 테이블엔 insert 정책이 없습니다.
+  - 랭킹 등록: `scores` 테이블 AFTER INSERT 트리거
+  - 일일 플레이 보상: `claim_coins_for_score()` 안에서 지급 성공 시 같이 생성
+  - 어제 순위 보상: `run_daily_rank_payout()` 안에서 지급 성공 시 같이 생성
+- 문구는 DB에 완성된 문장을 저장하는 대신 `type`+`game_id`+`amount`+`rank`+`reward_date` 같은 구조화된 값만 저장하고, 프론트(`Notifications.jsx`의 `buildMessage`)가 `games.js`와 조합해서 최종 한국어 문장을 만들어요. 나중에 문구를 바꾸거나 다국어를 붙이기 쉬워요.
+- "모두 읽음"/"모두 삭제" 버튼 제공. 삭제는 되돌릴 수 없어서 확인 다이얼로그를 거칩니다.
 
 ## 다음 게임 만들 때
 
