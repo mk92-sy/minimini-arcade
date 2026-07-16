@@ -14,6 +14,20 @@ const meta = games.find((g) => g.id === GAME_ID)
 const SIZE = 4
 const SWIPE_THRESHOLD = 24
 
+// 타일을 절대 위치(퍼센트)로 배치해서 left/top 트랜지션으로 슬라이드 애니메이션을 만듭니다.
+// GAP_PCT는 보드 폭 기준 % 값이라 반응형으로 리사이즈돼도 셀 정렬이 항상 맞습니다.
+const GAP_PCT = 2.5
+const CELL_PCT = (100 - (SIZE + 1) * GAP_PCT) / SIZE
+
+function cellStyle(row, col) {
+  return {
+    left: `${GAP_PCT + col * (CELL_PCT + GAP_PCT)}%`,
+    top: `${GAP_PCT + row * (CELL_PCT + GAP_PCT)}%`,
+    width: `${CELL_PCT}%`,
+    height: `${CELL_PCT}%`,
+  }
+}
+
 const TILE_COLORS = {
   2: '#eee4da',
   4: '#ede0c8',
@@ -30,85 +44,97 @@ const TILE_COLORS = {
 const TILE_COLOR_FALLBACK = '#3c3a5e'
 const DARK_TEXT_MAX = 4
 
-function emptyBoard() {
-  return Array.from({ length: SIZE }, () => Array(SIZE).fill(0))
-}
+// ── 타일은 { id, value, row, col } 형태로 관리합니다. id가 이동/병합 내내 유지되기 때문에
+// React가 같은 DOM 엘리먼트를 재사용하고, CSS가 left/top 변화를 자연스럽게 트랜지션으로 보여줍니다.
 
-function emptyCells(board) {
-  const cells = []
+function randomEmptyPosition(tiles) {
+  const occupied = new Set(tiles.map((t) => `${t.row}-${t.col}`))
+  const empties = []
   for (let r = 0; r < SIZE; r += 1) {
     for (let c = 0; c < SIZE; c += 1) {
-      if (board[r][c] === 0) cells.push([r, c])
+      if (!occupied.has(`${r}-${c}`)) empties.push([r, c])
     }
   }
-  return cells
+  if (empties.length === 0) return null
+  return empties[Math.floor(Math.random() * empties.length)]
 }
 
-function addRandomTile(board) {
-  const cells = emptyCells(board)
-  if (cells.length === 0) return board
-  const [r, c] = cells[Math.floor(Math.random() * cells.length)]
-  const next = board.map((row) => [...row])
-  next[r][c] = Math.random() < 0.9 ? 2 : 4
-  return next
+function spawnTile(tiles, getNextId) {
+  const pos = randomEmptyPosition(tiles)
+  if (!pos) return tiles
+  const [row, col] = pos
+  const value = Math.random() < 0.9 ? 2 : 4
+  return [...tiles, { id: getNextId(), value, row, col, isNew: true, justMerged: false }]
 }
 
-function slideRow(row) {
-  const filtered = row.filter((v) => v !== 0)
-  const merged = []
+function slideLine(lineTiles) {
+  const result = []
   let scoreGained = 0
   let i = 0
-  while (i < filtered.length) {
-    if (i + 1 < filtered.length && filtered[i] === filtered[i + 1]) {
-      const value = filtered[i] * 2
-      merged.push(value)
+  while (i < lineTiles.length) {
+    const current = lineTiles[i]
+    const next = lineTiles[i + 1]
+    if (next && next.value === current.value) {
+      const value = current.value * 2
+      result.push({ id: current.id, value, justMerged: true })
       scoreGained += value
       i += 2
     } else {
-      merged.push(filtered[i])
+      result.push({ id: current.id, value: current.value, justMerged: false })
       i += 1
     }
   }
-  while (merged.length < row.length) merged.push(0)
-  return { row: merged, scoreGained }
+  return { tiles: result, scoreGained }
 }
 
-function moveLeft(board) {
+function move(tiles, direction) {
   let moved = false
   let scoreGained = 0
-  const nextBoard = board.map((row) => {
-    const { row: newRow, scoreGained: gained } = slideRow(row)
+  const newTiles = []
+
+  for (let lineIndex = 0; lineIndex < SIZE; lineIndex += 1) {
+    let lineTiles
+    if (direction === 'left' || direction === 'right') {
+      lineTiles = tiles
+        .filter((t) => t.row === lineIndex)
+        .sort((a, b) => (direction === 'left' ? a.col - b.col : b.col - a.col))
+    } else {
+      lineTiles = tiles
+        .filter((t) => t.col === lineIndex)
+        .sort((a, b) => (direction === 'up' ? a.row - b.row : b.row - a.row))
+    }
+
+    const { tiles: slid, scoreGained: gained } = slideLine(lineTiles)
     scoreGained += gained
-    if (!moved && newRow.some((v, i) => v !== row[i])) moved = true
-    return newRow
-  })
-  return { board: nextBoard, moved, scoreGained }
+
+    slid.forEach((t, posIndex) => {
+      let row
+      let col
+      if (direction === 'left') {
+        row = lineIndex
+        col = posIndex
+      } else if (direction === 'right') {
+        row = lineIndex
+        col = SIZE - 1 - posIndex
+      } else if (direction === 'up') {
+        col = lineIndex
+        row = posIndex
+      } else {
+        col = lineIndex
+        row = SIZE - 1 - posIndex
+      }
+
+      const original = tiles.find((o) => o.id === t.id)
+      if (original.row !== row || original.col !== col || t.justMerged) moved = true
+
+      newTiles.push({ id: t.id, value: t.value, row, col, isNew: false, justMerged: t.justMerged })
+    })
+  }
+
+  return { tiles: newTiles, moved, scoreGained }
 }
 
-function reverseRows(board) {
-  return board.map((row) => [...row].reverse())
-}
-
-function transpose(board) {
-  return board[0].map((_, c) => board.map((row) => row[c]))
-}
-
-function moveRight(board) {
-  const result = moveLeft(reverseRows(board))
-  return { ...result, board: reverseRows(result.board) }
-}
-
-function moveUp(board) {
-  const result = moveLeft(transpose(board))
-  return { ...result, board: transpose(result.board) }
-}
-
-function moveDown(board) {
-  const result = moveLeft(reverseRows(transpose(board)))
-  return { ...result, board: transpose(reverseRows(result.board)) }
-}
-
-const MOVE_FNS = { left: moveLeft, right: moveRight, up: moveUp, down: moveDown }
+const MOVE_DIRECTIONS = ['left', 'right', 'up', 'down']
 const KEY_TO_DIRECTION = {
   ArrowLeft: 'left',
   ArrowRight: 'right',
@@ -116,30 +142,42 @@ const KEY_TO_DIRECTION = {
   ArrowDown: 'down',
 }
 
-function canMove(board) {
+function canMove(tiles) {
+  if (tiles.length < SIZE * SIZE) return true
+  const grid = {}
+  tiles.forEach((t) => {
+    grid[`${t.row}-${t.col}`] = t.value
+  })
   for (let r = 0; r < SIZE; r += 1) {
     for (let c = 0; c < SIZE; c += 1) {
-      if (board[r][c] === 0) return true
-      if (c < SIZE - 1 && board[r][c] === board[r][c + 1]) return true
-      if (r < SIZE - 1 && board[r][c] === board[r + 1][c]) return true
+      const v = grid[`${r}-${c}`]
+      if (c < SIZE - 1 && v === grid[`${r}-${c + 1}`]) return true
+      if (r < SIZE - 1 && v === grid[`${r + 1}-${c}`]) return true
     }
   }
   return false
 }
 
-function highestTile(board) {
-  return board.reduce((max, row) => Math.max(max, ...row), 0)
-}
-
-function startingBoard() {
-  return addRandomTile(addRandomTile(emptyBoard()))
+function highestTile(tiles) {
+  return tiles.reduce((max, t) => Math.max(max, t.value), 0)
 }
 
 export default function Game2048() {
   usePageTitle(meta.title)
   const { openAuthModal } = useAuth()
 
-  const [board, setBoard] = useState(startingBoard)
+  const tileIdRef = useRef(1)
+  const getNextId = () => (tileIdRef.current += 1)
+
+  const buildStartingTiles = () => {
+    tileIdRef.current = 1
+    let tiles = []
+    tiles = spawnTile(tiles, getNextId)
+    tiles = spawnTile(tiles, getNextId)
+    return tiles
+  }
+
+  const [tiles, setTiles] = useState(buildStartingTiles)
   const [score, setScore] = useState(0)
   const [gameOver, setGameOver] = useState(false)
   const [leaderboardRefreshSignal, setLeaderboardRefreshSignal] = useState(0)
@@ -148,20 +186,19 @@ export default function Game2048() {
 
   const handleMove = useCallback(
     (direction) => {
-      if (gameOver) return
-      const moveFn = MOVE_FNS[direction]
-      const { board: movedBoard, moved, scoreGained } = moveFn(board)
+      if (gameOver || !MOVE_DIRECTIONS.includes(direction)) return
+      const { tiles: movedTiles, moved, scoreGained } = move(tiles, direction)
       if (!moved) return
 
-      const withNewTile = addRandomTile(movedBoard)
-      setBoard(withNewTile)
+      const withNewTile = spawnTile(movedTiles, getNextId)
+      setTiles(withNewTile)
       setScore((prev) => prev + scoreGained)
 
       if (!canMove(withNewTile)) {
         setGameOver(true)
       }
     },
-    [board, gameOver],
+    [tiles, gameOver],
   )
 
   useEffect(() => {
@@ -198,12 +235,12 @@ export default function Game2048() {
   }
 
   const restart = () => {
-    setBoard(startingBoard())
+    setTiles(buildStartingTiles())
     setScore(0)
     setGameOver(false)
   }
 
-  const best = useMemo(() => highestTile(board), [board])
+  const best = useMemo(() => highestTile(tiles), [tiles])
 
   const shareText = gameOver
     ? `2048 게임 ${score}점, 최고 타일 ${best}! 너도 도전해봐 🧩`
@@ -229,24 +266,31 @@ export default function Game2048() {
             onTouchStart={handleTouchStart}
             onTouchEnd={handleTouchEnd}
           >
-            {board.map((row, r) =>
-              row.map((value, c) => (
+            <div className="game2048__bg-grid" aria-hidden="true">
+              {Array.from({ length: SIZE * SIZE }).map((_, i) => {
+                const row = Math.floor(i / SIZE)
+                const col = i % SIZE
+                return <div key={i} className="game2048__bg-cell" style={cellStyle(row, col)} />
+              })}
+            </div>
+
+            <div className="game2048__tiles">
+              {tiles.map((t) => (
                 <div
-                  key={`${r}-${c}`}
-                  className="game2048__cell"
-                  style={
-                    value
-                      ? {
-                          backgroundColor: TILE_COLORS[value] ?? TILE_COLOR_FALLBACK,
-                          color: value <= DARK_TEXT_MAX ? '#5c5240' : '#faf8f5',
-                        }
-                      : undefined
-                  }
+                  key={t.id}
+                  className={`game2048__tile${t.isNew ? ' game2048__tile--new' : ''}${
+                    t.justMerged ? ' game2048__tile--merged' : ''
+                  }`}
+                  style={{
+                    ...cellStyle(t.row, t.col),
+                    backgroundColor: TILE_COLORS[t.value] ?? TILE_COLOR_FALLBACK,
+                    color: t.value <= DARK_TEXT_MAX ? '#5c5240' : '#faf8f5',
+                  }}
                 >
-                  {value !== 0 && value}
+                  {t.value}
                 </div>
-              )),
-            )}
+              ))}
+            </div>
 
             {gameOver && (
               <div className="game2048__overlay">

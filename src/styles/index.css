@@ -1916,27 +1916,65 @@ button {
   width: 100%;
   max-width: 420px;
   aspect-ratio: 1 / 1;
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  grid-template-rows: repeat(4, 1fr);
-  gap: 8px;
-  padding: 8px;
   border-radius: 12px;
   background: var(--bg-void);
   border: 1px solid var(--border-soft);
   touch-action: none;
 }
 
-.game2048__cell {
+.game2048__bg-grid,
+.game2048__tiles {
+  position: absolute;
+  inset: 0;
+}
+
+.game2048__bg-cell {
+  position: absolute;
+  border-radius: 8px;
+  background: var(--bg-surface);
+}
+
+.game2048__tile {
+  position: absolute;
   display: flex;
   align-items: center;
   justify-content: center;
   border-radius: 8px;
-  background: var(--bg-surface);
   font-size: clamp(16px, 5vw, 26px);
   font-weight: 700;
-  color: var(--text-bright);
-  transition: background-color 0.12s ease;
+  transition: left 0.12s ease, top 0.12s ease;
+  will-change: left, top;
+}
+
+.game2048__tile--new {
+  animation: game2048-spawn 0.18s ease-out;
+}
+
+.game2048__tile--merged {
+  animation: game2048-merge-pop 0.2s ease-out;
+}
+
+@keyframes game2048-spawn {
+  from {
+    transform: scale(0);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes game2048-merge-pop {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.15);
+  }
+  100% {
+    transform: scale(1);
+  }
 }
 
 .game2048__overlay {
@@ -2339,12 +2377,15 @@ button {
 .memory__grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 10px;
+  gap: 7px;
+  /* 뷰포트 높이(vh) 기준으로도 캡해서, 화면이 넓든 짧든 그리드 전체가 100vh 안에 들어오게 함 */
+  width: min(340px, 82vw, 52vh);
+  margin: 0 auto;
   perspective: 800px;
 }
 
 .memory__card {
-  aspect-ratio: 3 / 4;
+  aspect-ratio: 1 / 1;
   border: none;
   padding: 0;
   background: transparent;
@@ -2403,12 +2444,15 @@ button {
 .memory__card-face--back {
   background: linear-gradient(145deg, color-mix(in srgb, var(--tint) 30%, var(--bg-surface)), var(--bg-void));
   border: 2px solid var(--tint);
+  /* front 페이스와 대칭으로, 뒤집힌 순간(90도 지점)에만 사라지도록 명시적으로 토글 */
+  opacity: 1;
+  transition: opacity 0s linear 0.22s;
 }
 
 .memory__card-face--back::after {
   content: '?';
   font-family: var(--font-display);
-  font-size: 16px;
+  font-size: 12px;
   color: var(--tint);
   opacity: 0.6;
 }
@@ -2416,8 +2460,23 @@ button {
 .memory__card-face--front {
   background: var(--bg-surface);
   border: 2px solid color-mix(in srgb, var(--tint) 55%, transparent);
-  font-size: clamp(22px, 6vw, 32px);
+  font-size: clamp(15px, 5vw, 22px);
   transform: rotateY(180deg);
+  /* backface-visibility만으로는 브라우저에 따라 뒤집기 전 이모지가 살짝 비쳐 보이는
+     현상이 있어서, opacity를 0/1로 명시적으로 전환해 완전히 숨겼다가 뒤집힌 순간
+     그대로(반투명 없이) 보이게 함. 딜레이는 카드가 90도(절반)를 넘는 시점에 맞춘 값. */
+  opacity: 0;
+  transition: opacity 0s linear 0.22s;
+}
+
+.memory__card--open .memory__card-face--front {
+  opacity: 1;
+  transition-delay: 0.22s;
+}
+
+.memory__card--open .memory__card-face--back {
+  opacity: 0;
+  transition-delay: 0.22s;
 }
 
 .memory__card--matched .memory__card-face--front {
