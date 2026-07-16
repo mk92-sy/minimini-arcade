@@ -29,7 +29,7 @@ function buildMessage(n) {
     case 'daily_play_reward':
       return `${gameTitle(n.game_id)} 일일 보상이 지급되었습니다. (+${n.amount})`
     case 'daily_rank_reward':
-      return `${formatMonthDay(n.reward_date)} ${n.rank}위를 달성하여 축하 보상이 지급되었습니다. (+${n.amount})`
+      return `${formatMonthDay(n.reward_date)} ${gameTitle(n.game_id)} ${n.rank}위를 달성하여 축하 보상이 지급되었습니다. (+${n.amount})`
     case 'admin_broadcast':
       return n.message || '운영자로부터 새 공지가 도착했어요.'
     default:
