@@ -13,6 +13,7 @@ import MemoryGame from './games/MemoryGame.jsx'
 import RunnerGame from './games/RunnerGame.jsx'
 import TypingGame from './games/TypingGame.jsx'
 import Header from './components/common/Header.jsx'
+import AnnouncementBar from './components/common/AnnouncementBar.jsx'
 import BottomNav from './components/common/BottomNav.jsx'
 import AuthModal from './components/common/AuthModal.jsx'
 import CoinAwardModal from './components/common/CoinAwardModal.jsx'
@@ -25,7 +26,10 @@ export default function App() {
 
   return (
     <>
-      <Header />
+      <div className="app-header-group">
+        <Header />
+        <AnnouncementBar />
+      </div>
       <AuthModal />
       <CoinAwardModal />
       <main className="app-content">

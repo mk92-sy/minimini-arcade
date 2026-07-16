@@ -10,7 +10,7 @@ create extension if not exists "pgcrypto";
 -- 최초 로그인 시 프론트(src/lib/profile.js)에서 자동 생성함
 -- (랜덤문자열 10글자 + 구글이면 g, 카카오면 k)
 --
--- 닉네임 길이 제한(한글 12글자/24바이트, "한글=2바이트" 기준)은
+-- 닉네임 길이 제한(한글 8글자/16바이트, "한글=2바이트" 기준, 띄어쓰기 불가)은
 -- 프론트(src/lib/nicknameValidation.js)에서 검증합니다. 여기 DB 제약은
 -- 실제 UTF-8 바이트 수 기준이 아니라 문자 수 기준의 느슨한 안전망입니다.
 -- ─────────────────────────────────────────────────────────────
@@ -621,6 +621,49 @@ as $$
 $$;
 
 grant execute on function public.is_recently_deleted(text, text) to anon, authenticated;
+
+-- ─────────────────────────────────────────────────────────────
+-- announcements: 헤더 바로 밑 전광판(AnnouncementBar)에 흐르는 공지사항.
+-- 클라이언트는 절대 쓸 수 없고(insert/update/delete 정책 없음), active=true인
+-- 행만 공개 조회됩니다. 작성/수정/삭제는 관리자가 Supabase 대시보드
+-- SQL Editor(RLS 우회)에서 직접 처리하세요 — 아래 "공지사항 관리" 참고.
+-- ─────────────────────────────────────────────────────────────
+
+create table if not exists public.announcements (
+  id uuid primary key default gen_random_uuid(),
+  message text not null,
+  active boolean not null default true,
+  created_at timestamptz not null default now()
+);
+
+alter table public.announcements enable row level security;
+
+drop policy if exists "announcements_select_active" on public.announcements;
+create policy "announcements_select_active"
+  on public.announcements for select
+  using (active = true);
+
+-- insert/update/delete 정책은 의도적으로 만들지 않음 -> RLS가 기본 차단.
+
+-- ── 공지사항 관리 (Supabase 대시보드 → SQL Editor에서 실행) ──
+--
+-- 새 공지 추가:
+--   insert into public.announcements (message)
+--   values ('7/20까지 접속하면 코인 2배 이벤트 진행 중!');
+--
+-- 여러 개 등록하면 전광판에 " · "로 이어져서 순서대로(등록 오래된 순) 흘러갑니다.
+--
+-- 현재 공지 목록 확인:
+--   select id, message, active, created_at from public.announcements order by created_at desc;
+--
+-- 특정 공지 잠깐 숨기기(데이터는 남김):
+--   update public.announcements set active = false where id = '<위에서 복사한 id>';
+--
+-- 다시 노출:
+--   update public.announcements set active = true where id = '<id>';
+--
+-- 완전 삭제:
+--   delete from public.announcements where id = '<id>';
 
 -- 참고: 게임별로 "말도 안 되는 점수"를 막고 싶다면 이런 식의 체크도 추가할 수 있어요.
 -- 예) 반응속도 게임은 사람이 물리적으로 100ms 이하로 반응하기 매우 어려우므로:

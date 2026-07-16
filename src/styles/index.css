@@ -1154,10 +1154,13 @@ button {
 
 /* ---------- Sticky app header ---------- */
 
-.app-header {
+.app-header-group {
   position: sticky;
   top: 0;
   z-index: 40;
+}
+
+.app-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -1212,6 +1215,94 @@ button {
   white-space: nowrap;
 }
 
+/* ---------- Announcement ticker (전광판) ---------- */
+
+.announce-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 16px;
+  background: linear-gradient(180deg, var(--bg-screen), color-mix(in srgb, var(--bg-screen) 88%, black));
+  border-bottom: 1px solid var(--border-soft);
+  overflow: hidden;
+}
+
+.announce-bar__tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  font-family: var(--font-display);
+  font-size: 9px;
+  letter-spacing: 1.5px;
+  color: var(--accent-marquee);
+  padding: 4px 8px;
+  border: 1px solid color-mix(in srgb, var(--accent-marquee) 55%, transparent);
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--accent-marquee) 12%, transparent);
+}
+
+.announce-bar__dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--accent-marquee);
+  box-shadow: 0 0 6px var(--accent-marquee);
+  animation: bulb-blink 1.6s ease-in-out infinite;
+}
+
+.announce-bar__viewport {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  height: 18px;
+  overflow: hidden;
+}
+
+.announce-bar__item {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.3px;
+  color: var(--text-bright);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  animation-name: announce-rise;
+  animation-duration: 4.2s;
+  animation-timing-function: ease;
+  animation-fill-mode: both;
+}
+
+.announce-bar__item--static {
+  animation: none;
+  transform: none;
+  opacity: 1;
+}
+
+@keyframes announce-rise {
+  0% {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+  12% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+  88% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+}
+
 /* ---------- Fixed bottom nav ---------- */
 
 .bottom-nav {
@@ -1240,6 +1331,22 @@ button {
 
 .bottom-nav__item--active {
   color: var(--accent-marquee);
+}
+
+.bottom-nav__icon-wrap {
+  position: relative;
+  display: inline-flex;
+}
+
+.bottom-nav__dot {
+  position: absolute;
+  top: -2px;
+  right: -3px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent-danger);
+  box-shadow: 0 0 0 2px var(--bg-void);
 }
 
 .bottom-nav__label {

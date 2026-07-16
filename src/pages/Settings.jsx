@@ -52,8 +52,9 @@ export default function Settings() {
   }
 
   const handleInput = (value) => {
-    if (getDisplayByteLength(value) <= NICKNAME_MAX_BYTES) {
-      setEditValue(value)
+    const noSpace = value.replace(/\s/g, '')
+    if (getDisplayByteLength(noSpace) <= NICKNAME_MAX_BYTES) {
+      setEditValue(noSpace)
       setStatus('idle')
     }
   }
@@ -105,7 +106,7 @@ export default function Settings() {
             </button>
           </div>
           <p className="auth-modal__byte-counter">
-            {getDisplayByteLength(editValue)}/{NICKNAME_MAX_BYTES}바이트 (한글 최대 12자)
+            {getDisplayByteLength(editValue)}/{NICKNAME_MAX_BYTES}바이트 (한글 최대 8자, 띄어쓰기 불가)
           </p>
           <p className="auth-modal__warning">
             ⚠️ 부적절한 닉네임(욕설·비방·광고성 문구 등)은 별도 경고 없이 계정이 삭제될 수 있어요.
