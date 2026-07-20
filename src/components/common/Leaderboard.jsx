@@ -3,7 +3,7 @@ import { fetchLeaderboard, fetchMyRank } from '../../lib/scores.js'
 import { useAuth } from '../../context/AuthContext.jsx'
 
 const CACHE_TTL = 60 * 60 * 1000 // 1시간
-const CACHE_VERSION = 'v3' // 버전을 올리면 예전에 캐시된 값이 자동 무효화됨
+const CACHE_VERSION = 'v4' // 버전을 올리면 예전에 캐시된 값이 자동 무효화됨 (v4: 닉네임 컬러/뱃지 컬럼 추가)
 
 // top10은 "누가 보든 똑같은" 공개 데이터라서 gameId+order로만 키를 잡아요.
 // (userId를 섞으면 로그인/로그아웃할 때마다 캐시가 쪼개져서, 로그아웃 후
@@ -175,7 +175,16 @@ export default function Leaderboard({ gameId, order = 'desc', unit = '', limit =
             return (
               <li key={row.user_id} className="leaderboard__row">
                 <span className="leaderboard__rank">{rank <= 3 ? <MedalIcon rank={rank} /> : rank}</span>
-                <span className="leaderboard__nickname">{row.nickname}</span>
+                <span className="leaderboard__nickname">
+                  {row.badge_icon && (
+                    <span className="leaderboard__nickname-badge" aria-hidden="true">
+                      {row.badge_icon}
+                    </span>
+                  )}
+                  <span style={row.nickname_color_hex ? { color: row.nickname_color_hex } : undefined}>
+                    {row.nickname}
+                  </span>
+                </span>
                 <span className="leaderboard__score">
                   {row.score}
                   {unit}

@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useState } from 'rea
 import { supabase } from '../lib/supabaseClient.js'
 import { ensureProfile, updateNickname as updateNicknameRequest } from '../lib/profile.js'
 import { fetchUnreadNotificationCount } from '../lib/notifications.js'
+import { fetchStoreItems } from '../lib/store.js'
 
 const AuthContext = createContext(null)
 
@@ -14,6 +15,9 @@ export function AuthProvider({ children }) {
   const [authError, setAuthError] = useState('')
   const [coinAward, setCoinAward] = useState(null) // { awards: [{award_type, amount}], total } | null
   const [unreadCount, setUnreadCount] = useState(0)
+  // 장착된 코스메틱(id)을 실제 색상/이모지로 바꿔서 보여주기 위한 카탈로그. 공개 데이터라
+  // 로그인 여부와 상관없이 앱 시작 시 한 번만 불러와요 (헤더/리더보드가 여기서 값을 꺼내 씀).
+  const [storeCatalog, setStoreCatalog] = useState([])
 
   // 세션 구독
   useEffect(() => {
@@ -66,6 +70,17 @@ export function AuthProvider({ children }) {
       cancelled = true
     }
   }, [session])
+
+  useEffect(() => {
+    if (!supabase) return
+    let cancelled = false
+    fetchStoreItems().then((items) => {
+      if (!cancelled) setStoreCatalog(items)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   const refreshUnreadCount = useCallback(async () => {
     const user = session?.user
@@ -220,15 +235,27 @@ export function AuthProvider({ children }) {
     setProfile((p) => (p ? { ...p, ...patch } : p))
   }, [])
 
+  const equippedNicknameColor = profile?.equipped_nickname_color ?? null
+  const equippedBadge = profile?.equipped_badge ?? null
+  const equippedBorder = profile?.equipped_border ?? null
+
+  // 장착 id -> 실제 표시값(색상 hex / 이모지) 변환. 상점 카탈로그가 아직 로딩 전이면
+  // (혹은 참조하는 아이템이 비활성화됐으면) null이 되어 자연스럽게 기본 스타일로 보임.
+  const equippedNicknameColorHex =
+    storeCatalog.find((item) => item.id === equippedNicknameColor)?.color_hex ?? null
+  const equippedBadgeIcon = storeCatalog.find((item) => item.id === equippedBadge)?.icon ?? null
+
   const value = {
     isConfigured: Boolean(supabase),
     user: session?.user ?? null,
     profile,
     nickname: profile?.nickname ?? null,
     coins: profile?.coins ?? 0,
-    equippedNicknameColor: profile?.equipped_nickname_color ?? null,
-    equippedBadge: profile?.equipped_badge ?? null,
-    equippedBorder: profile?.equipped_border ?? null,
+    equippedNicknameColor,
+    equippedBadge,
+    equippedBorder,
+    equippedNicknameColorHex,
+    equippedBadgeIcon,
     coinAward,
     notifyCoinsAwarded,
     addBonusCoinAward,

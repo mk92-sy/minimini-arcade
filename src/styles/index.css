@@ -623,6 +623,15 @@ button {
 .leaderboard__nickname {
   flex: 1;
   font-size: 14px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+.leaderboard__nickname-badge {
+  flex-shrink: 0;
+  font-size: 13px;
 }
 
 .leaderboard__score {
@@ -833,6 +842,36 @@ button {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.auth-button__badge {
+  flex-shrink: 0;
+  font-size: 13px;
+}
+
+.auth-button__nickname-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 상점에서 "프로필 테두리 · 네온 글로우"를 장착했을 때 헤더 전체에 적용되는 효과 */
+.auth-button--border-glow {
+  border-color: transparent;
+  animation: auth-border-glow 2.4s ease-in-out infinite;
+}
+
+@keyframes auth-border-glow {
+  0%,
+  100% {
+    box-shadow:
+      0 0 0 1px color-mix(in srgb, var(--accent-arcade) 70%, transparent),
+      0 0 10px 1px color-mix(in srgb, var(--accent-arcade) 45%, transparent);
+  }
+  50% {
+    box-shadow:
+      0 0 0 1px color-mix(in srgb, var(--accent-marquee) 70%, transparent),
+      0 0 18px 4px color-mix(in srgb, var(--accent-marquee) 55%, transparent);
+  }
 }
 
 .auth-button__icon {
