@@ -211,15 +211,28 @@ export function AuthProvider({ children }) {
     )
   }, [])
 
+  /**
+   * 상점 구매/장착처럼, 서버 RPC가 이미 반영한 최신 값(코인 잔액, 장착 슬롯 등)을
+   * 프로필 상태에 그대로 병합할 때 사용합니다. 서버가 계산한 값을 그대로 신뢰하고 덮어씁니다.
+   */
+  const updateLocalProfile = useCallback((patch) => {
+    if (!patch) return
+    setProfile((p) => (p ? { ...p, ...patch } : p))
+  }, [])
+
   const value = {
     isConfigured: Boolean(supabase),
     user: session?.user ?? null,
     profile,
     nickname: profile?.nickname ?? null,
     coins: profile?.coins ?? 0,
+    equippedNicknameColor: profile?.equipped_nickname_color ?? null,
+    equippedBadge: profile?.equipped_badge ?? null,
+    equippedBorder: profile?.equipped_border ?? null,
     coinAward,
     notifyCoinsAwarded,
     addBonusCoinAward,
+    updateLocalProfile,
     closeCoinAward: () => setCoinAward(null),
     unreadCount,
     refreshUnreadCount,

@@ -1,8 +1,10 @@
 import { supabase } from './supabaseClient.js'
 import { generateNickname } from './nickname.js'
-import { getDisplayByteLength, NICKNAME_MAX_BYTES, NICKNAME_MAX_BYTES_LABEL, hasWhitespace } from './nicknameValidation.js'
+import { getDisplayByteLength, NICKNAME_MAX_BYTES, NICKNAME_MAX_BYTES_LABEL } from './nicknameValidation.js'
 
 const MAX_NICKNAME_RETRIES = 5
+
+const PROFILE_COLUMNS = 'id, nickname, provider, coins, equipped_nickname_color, equipped_badge, equipped_border'
 
 /**
  * 로그인한 유저의 프로필을 가져오고, 없으면 랜덤 닉네임으로 새로 만듭니다.
@@ -13,7 +15,7 @@ export async function ensureProfile(user) {
 
   const { data: existing, error: fetchError } = await supabase
     .from('profiles')
-    .select('id, nickname, provider, coins')
+    .select(PROFILE_COLUMNS)
     .eq('id', user.id)
     .maybeSingle()
 
@@ -31,7 +33,7 @@ export async function ensureProfile(user) {
     const { data, error } = await supabase
       .from('profiles')
       .insert([{ id: user.id, nickname, provider }])
-      .select('id, nickname, provider, coins')
+      .select(PROFILE_COLUMNS)
       .single()
 
     if (!error) return data
@@ -55,9 +57,6 @@ export async function updateNickname(userId, nextNickname) {
   if (trimmed.length === 0) {
     return { data: null, error: new Error('닉네임을 입력해주세요.') }
   }
-  if (hasWhitespace(trimmed)) {
-    return { data: null, error: new Error('닉네임에는 띄어쓰기를 사용할 수 없어요.') }
-  }
   if (getDisplayByteLength(trimmed) > NICKNAME_MAX_BYTES) {
     return { data: null, error: new Error(`닉네임은 최대 ${NICKNAME_MAX_BYTES_LABEL}까지 입력할 수 있어요.`) }
   }
@@ -66,7 +65,7 @@ export async function updateNickname(userId, nextNickname) {
     .from('profiles')
     .update({ nickname: trimmed })
     .eq('id', userId)
-    .select('id, nickname, provider, coins')
+    .select(PROFILE_COLUMNS)
     .single()
 
   if (error?.code === '23505') {
