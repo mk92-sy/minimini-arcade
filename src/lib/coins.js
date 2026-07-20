@@ -35,24 +35,6 @@ export async function claimCoinsForScore(gameId) {
 const SIMULATED_AD_DURATION_MS = 3000
 
 /**
- * ⚠️ 테스트/개발용. 실제 서비스에서는 쓰지 않는 치트성 기능이라, 프론트에서도
- * IP 허용 목록에 있는 사람(useDevToolsAccess)에게만 버튼을 보여줍니다.
- * DB 함수(dev_grant_test_coins)는 supabase/add_dev_test_coins.sql 참고.
- * @returns {Promise<{ data: { new_coins: number } | null, error: Error|null }>}
- */
-export async function grantTestCoins(amount = 9999) {
-  if (!supabase) return { data: null, error: null }
-
-  const { data, error } = await supabase.rpc('dev_grant_test_coins', { p_amount: amount })
-  if (error) {
-    console.warn('[coins] 테스트 코인 지급에 실패했어요.', error)
-    return { data: null, error }
-  }
-
-  return { data: data?.[0] ?? null, error: null }
-}
-
-/**
  * 보상형 광고 시청 + 보너스 코인 지급.
  * ⚠️ 아직 실제 광고 SDK(애드몹/카카오 애드핏 등)를 연동하지 않아서,
  * 여기서는 일정 시간 대기로 "광고 시청"을 흉내만 냅니다. 실제 SDK를 붙일 때는
