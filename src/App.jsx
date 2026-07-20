@@ -17,12 +17,21 @@ import AnnouncementBar from './components/common/AnnouncementBar.jsx'
 import BottomNav from './components/common/BottomNav.jsx'
 import AuthModal from './components/common/AuthModal.jsx'
 import CoinAwardModal from './components/common/CoinAwardModal.jsx'
+import PopupAuthCallback from './components/common/PopupAuthCallback.jsx'
+import { AUTH_POPUP_QUERY_KEY } from './lib/authPopup.js'
 import useDevToolsAccess from './hooks/useDevToolsAccess.js'
 import useDevToolsGuard from './hooks/useDevToolsGuard.js'
 
 export default function App() {
   const guardEnabled = useDevToolsAccess()
   useDevToolsGuard(guardEnabled)
+
+  // OAuth 팝업이 로그인 완료 후 돌아오는 화면. 이때는 전체 아케이드 UI 대신
+  // "로그인 처리 중..." 화면만 보여주고 스스로 창을 닫는다.
+  const isAuthPopup = new URLSearchParams(window.location.search).get(AUTH_POPUP_QUERY_KEY) === '1'
+  if (isAuthPopup) {
+    return <PopupAuthCallback />
+  }
 
   return (
     <>

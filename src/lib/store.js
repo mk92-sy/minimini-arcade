@@ -58,6 +58,22 @@ export async function purchaseItem(itemId, quantity = 1) {
 }
 
 /**
+ * 장바구니 전체를 한 번에 원자적으로 구매합니다 (전부 성공 아니면 전부 실패).
+ * 총 구매액이 보유 코인보다 많으면 서버에서 아예 아무 것도 차감/적립하지 않고 실패합니다.
+ * @param {{ itemId: string, quantity: number }[]} cartItems
+ * @returns {Promise<{ data: { new_coins: number, item_id: string, new_quantity: number }[] | null, error: Error|null }>}
+ */
+export async function purchaseCart(cartItems) {
+  if (!supabase) return { data: null, error: NOT_CONNECTED_ERROR }
+
+  const { data, error } = await supabase.rpc('purchase_cart_items', {
+    p_items: cartItems.map((c) => ({ item_id: c.itemId, quantity: c.quantity })),
+  })
+
+  return { data: data ?? null, error }
+}
+
+/**
  * 코스메틱 아이템 장착/해제 토글. 이미 장착돼 있으면 해제됩니다.
  * @returns {Promise<{ data: { equipped_nickname_color, equipped_badge, equipped_border } | null, error: Error|null }>}
  */

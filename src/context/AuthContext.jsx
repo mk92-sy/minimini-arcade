@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useState } from 'rea
 import { supabase } from '../lib/supabaseClient.js'
 import { ensureProfile, updateNickname as updateNicknameRequest } from '../lib/profile.js'
 import { fetchUnreadNotificationCount } from '../lib/notifications.js'
+import { startOAuthPopup, clearSupabaseLocalCache } from '../lib/authPopup.js'
 
 const AuthContext = createContext(null)
 
@@ -67,6 +68,14 @@ export function AuthProvider({ children }) {
     }
   }, [session])
 
+  // 팝업으로 로그인이 완료되면(다른 탭/윈도우의 localStorage 변화를 supabase-js가
+  // 감지해서 세션이 들어옴) 열려 있던 로그인 모달을 자동으로 닫아줌.
+  useEffect(() => {
+    if (session?.user) {
+      setModalOpen(false)
+    }
+  }, [session?.user])
+
   const refreshUnreadCount = useCallback(async () => {
     const user = session?.user
     if (!user) {
@@ -105,28 +114,28 @@ export function AuthProvider({ children }) {
   const signInWithGoogle = useCallback(() => {
     if (!supabase) return
     setAuthError('')
-    return supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: { redirectTo: window.location.origin },
-    })
+    return startOAuthPopup(supabase, 'google')
   }, [])
 
   const signInWithKakao = useCallback(() => {
     if (!supabase) return
     setAuthError('')
-    return supabase.auth.signInWithOAuth({
-      provider: 'kakao',
-      options: {
-        redirectTo: window.location.origin,
-        // 이메일/프로필사진은 안 쓰므로 요청하지 않음 (닉네임은 우리가 자체 랜덤 생성함).
-        scopes: 'profile_nickname',
-      },
+    return startOAuthPopup(supabase, 'kakao', {
+      // 이메일/프로필사진은 안 쓰므로 요청하지 않음 (닉네임은 우리가 자체 랜덤 생성함).
+      scopes: 'profile_nickname',
     })
   }, [])
 
-  const signOut = useCallback(() => {
+  /**
+   * 로그아웃. 서버 세션(모든 기기/탭의 refresh token)까지 무효화하고(scope: 'global'),
+   * 혹시 supabase-js가 못 지웠을 수 있는 로컬 캐시(sb-* 로컬스토리지 키: 세션 토큰,
+   * PKCE code_verifier 등)까지 한 번 더 직접 정리해서 로그인 흔적을 남기지 않습니다.
+   */
+  const signOut = useCallback(async () => {
     if (!supabase) return
-    return supabase.auth.signOut()
+    const result = await supabase.auth.signOut({ scope: 'global' })
+    clearSupabaseLocalCache()
+    return result
   }, [])
 
   const changeNickname = useCallback(

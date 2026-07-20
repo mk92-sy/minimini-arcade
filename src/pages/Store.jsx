@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "../context/AuthContext.jsx";
-import { equipItem, fetchInventory, fetchStoreItems, purchaseItem, useConsumable } from "../lib/store.js";
+import { equipItem, fetchInventory, fetchStoreItems, purchaseCart, useConsumable } from "../lib/store.js";
+import { grantTestCoins } from "../lib/coins.js";
 import { games } from "../data/games.js";
 import { IconCoin } from "../components/common/icons.jsx";
 import usePageTitle from "../hooks/usePageTitle.js";
+import useDevToolsAccess from "../hooks/useDevToolsAccess.js";
 
 const CATEGORY_TABS = [
   { key: "all", label: "전체" },
@@ -79,6 +81,8 @@ export default function Store() {
   const [useStatus, setUseStatus] = useState({}); // { [itemId]: 'busy' }
   const [useError, setUseError] = useState({}); // { [itemId]: string }
   const [retrySelection, setRetrySelection] = useState(RETRY_GAME_OPTIONS[0]?.id ?? "");
+  const [testCoinStatus, setTestCoinStatus] = useState("idle"); // idle | busy
+  const canUseDevTools = !useDevToolsAccess();
 
   useEffect(() => {
     let cancelled = false;
@@ -166,26 +170,43 @@ export default function Store() {
     setCheckoutStatus("processing");
     setCheckoutError("");
 
-    const remaining = [...cart];
-    let latestCoins = coins;
+    // 전부 성공 아니면 전부 실패(원자적 처리) — 총액이 보유 코인보다 많으면
+    // 서버가 아예 아무 것도 차감/적립하지 않고 에러만 돌려주므로, 장바구니와
+    // 코인 잔액은 실패 시 그대로 유지하면 됨(별도 롤백 로직 불필요).
+    const { data, error } = await purchaseCart(cart);
 
-    for (const entry of cart) {
-      const { data, error } = await purchaseItem(entry.itemId, entry.quantity);
-      if (error) {
-        setCheckoutError(purchaseErrorMessage(error));
-        setCheckoutStatus("error");
-        setCart(remaining);
-        updateLocalProfile({ coins: latestCoins });
-        return;
-      }
-      latestCoins = data.new_coins;
-      remaining.shift();
-      setInventory((prev) => ({ ...prev, [entry.itemId]: data.new_quantity }));
+    if (error) {
+      setCheckoutError(purchaseErrorMessage(error));
+      setCheckoutStatus("error");
+      return;
     }
 
-    updateLocalProfile({ coins: latestCoins });
+    const rows = data ?? [];
+    setInventory((prev) => {
+      const next = { ...prev };
+      for (const row of rows) {
+        next[row.item_id] = row.new_quantity;
+      }
+      return next;
+    });
+
+    const finalCoins = rows[0]?.new_coins;
+    if (typeof finalCoins === "number") {
+      updateLocalProfile({ coins: finalCoins });
+    }
+
     setCart([]);
     setCheckoutStatus("done");
+  };
+
+  const handleGrantTestCoins = async () => {
+    if (!user || testCoinStatus === "busy") return;
+    setTestCoinStatus("busy");
+    const { data, error } = await grantTestCoins(9999);
+    setTestCoinStatus("idle");
+    if (!error && typeof data?.new_coins === "number") {
+      updateLocalProfile({ coins: data.new_coins });
+    }
   };
 
   const handleEquip = async (item) => {
@@ -378,6 +399,17 @@ export default function Store() {
                   {!user && (
                     <button type="button" className="store-page__login-button" onClick={openAuthModal}>
                       로그인하고 확인하기
+                    </button>
+                  )}
+                  {user && canUseDevTools && (
+                    <button
+                      type="button"
+                      className="store-page__test-coin-button"
+                      onClick={handleGrantTestCoins}
+                      disabled={testCoinStatus === "busy"}
+                      title="테스트용 — 실제 서비스에선 노출되지 않아요"
+                    >
+                      {testCoinStatus === "busy" ? "지급 중..." : "[테스트] +9999 코인"}
                     </button>
                   )}
                 </div>

@@ -250,6 +250,111 @@ $$;
 grant execute on function public.purchase_store_item(text, int) to authenticated;
 
 -- ─────────────────────────────────────────────────────────────
+-- 장바구니 일괄 구매: 여러 아이템을 "전부 성공 아니면 전부 실패"로 한 번에 처리.
+-- purchase_store_item을 아이템마다 따로따로 호출하면 각 호출이 독립된 트랜잭션이라,
+-- 총 구매액이 보유 코인을 넘을 때 앞쪽 아이템 몇 개는 이미 결제된 채로 뒤에서
+-- INSUFFICIENT_COINS가 나는 문제가 있었음. 이 함수는 (1) 먼저 전체 아이템을
+-- 검증하고 총액을 계산 -> (2) 코인이 총액보다 적으면 이 시점에서 바로 예외를 던져
+-- 함수 전체가 롤백(아무 것도 차감/적립되지 않음) -> (3) 충분하면 총액을 한 번에
+-- 차감하고 아이템들을 적립, 순서로 진행함.
+--
+-- p_items 형식: [{"item_id": "badge_fire", "quantity": 1}, {"item_id": "undo_token", "quantity": 3}, ...]
+-- ─────────────────────────────────────────────────────────────
+
+create or replace function public.purchase_cart_items(p_items jsonb)
+returns table (new_coins int, item_id text, new_quantity int)
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_user uuid := auth.uid();
+  v_entry jsonb;
+  v_item_id text;
+  v_quantity int;
+  v_price int;
+  v_stackable boolean;
+  v_already_owned boolean;
+  v_total int := 0;
+  v_current_coins int;
+begin
+  if v_user is null then
+    raise exception 'NOT_AUTHENTICATED';
+  end if;
+
+  if p_items is null or jsonb_typeof(p_items) <> 'array' or jsonb_array_length(p_items) = 0 then
+    raise exception 'EMPTY_CART';
+  end if;
+
+  -- 1단계: 검증 + 총액 계산 (아직 아무 것도 차감/적립하지 않음)
+  for v_entry in select * from jsonb_array_elements(p_items)
+  loop
+    v_item_id := v_entry->>'item_id';
+    v_quantity := coalesce((v_entry->>'quantity')::int, 1);
+
+    if v_item_id is null or v_quantity < 1 then
+      raise exception 'INVALID_QUANTITY';
+    end if;
+
+    select price, stackable into v_price, v_stackable
+    from public.store_items where id = v_item_id and active;
+
+    if v_price is null then
+      raise exception 'ITEM_NOT_FOUND';
+    end if;
+
+    if not v_stackable then
+      if v_quantity <> 1 then
+        raise exception 'INVALID_QUANTITY';
+      end if;
+      select exists(
+        select 1 from public.user_inventory ui where ui.user_id = v_user and ui.item_id = v_item_id
+      ) into v_already_owned;
+      if v_already_owned then
+        raise exception 'ALREADY_OWNED';
+      end if;
+    end if;
+
+    v_total := v_total + v_price * v_quantity;
+  end loop;
+
+  -- 2단계: 총액 기준으로 잔액을 딱 한 번만 확인 -> 여기서 실패하면 함수 전체가
+  -- 예외로 빠져서 위에서 아직 아무 것도 안 건드렸으니 그대로 아무 일도 없던 게 됨.
+  select coins into v_current_coins from public.profiles where id = v_user for update;
+  if v_current_coins is null or v_current_coins < v_total then
+    raise exception 'INSUFFICIENT_COINS';
+  end if;
+
+  update public.profiles set coins = coins - v_total where id = v_user;
+
+  -- 3단계: 검증을 통과한 아이템들을 실제로 적립 + 로그
+  for v_entry in select * from jsonb_array_elements(p_items)
+  loop
+    v_item_id := v_entry->>'item_id';
+    v_quantity := coalesce((v_entry->>'quantity')::int, 1);
+
+    select price into v_price from public.store_items where id = v_item_id;
+
+    insert into public.user_inventory (user_id, item_id, quantity, updated_at)
+    values (v_user, v_item_id, v_quantity, now())
+    on conflict (user_id, item_id)
+    do update set quantity = public.user_inventory.quantity + excluded.quantity, updated_at = now();
+
+    insert into public.store_purchases (user_id, item_id, quantity, unit_price, total_price)
+    values (v_user, v_item_id, v_quantity, v_price, v_price * v_quantity);
+
+    item_id := v_item_id;
+    select coins into new_coins from public.profiles where id = v_user;
+    select ui.quantity into new_quantity
+      from public.user_inventory ui where ui.user_id = v_user and ui.item_id = v_item_id;
+    return next;
+  end loop;
+end;
+$$;
+
+grant execute on function public.purchase_cart_items(jsonb) to authenticated;
+
+-- ─────────────────────────────────────────────────────────────
 -- 장착/해제 토글: 코스메틱 카테고리만 가능, 보유 확인 후 subcategory에 맞는 슬롯에 반영.
 -- 이미 장착된 아이템을 다시 누르면 해제됩니다.
 -- ─────────────────────────────────────────────────────────────
