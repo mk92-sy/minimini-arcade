@@ -317,7 +317,9 @@ grant execute on function public.equip_store_item(text) to authenticated;
 
 -- ─────────────────────────────────────────────────────────────
 -- 소모: utility 카테고리만 가능, 재고 1 차감. retry_ticket은 game_id가 필수이며
--- daily_retry_allowance에 +1을 쌓아둡니다 (실제 프론트 연동은 다음 단계).
+-- daily_retry_allowance에 +1을 쌓아둡니다. 상품 설명("게임당 하루 최대 2회")과
+-- 맞춰서, 하루에 재도전권으로 늘릴 수 있는 한도는 딱 1(=기본 1회 + 재도전 1회)로
+-- 못박아둡니다 — 이미 오늘 다 썼으면 아이템을 아예 차감하지 않고 거부합니다.
 -- ─────────────────────────────────────────────────────────────
 
 create or replace function public.use_store_item(p_item_id text, p_game_id text default null)
@@ -332,6 +334,8 @@ declare
   v_subcategory text;
   v_qty int;
   v_today date := (now() at time zone 'Asia/Seoul')::date;
+  v_current_extra int;
+  v_max_extra_per_day constant int := 1;
 begin
   if v_user is null then
     raise exception 'NOT_AUTHENTICATED';
@@ -347,16 +351,28 @@ begin
     raise exception 'NOT_CONSUMABLE';
   end if;
 
+  if v_subcategory = 'retry_ticket' and p_game_id is null then
+    raise exception 'GAME_ID_REQUIRED';
+  end if;
+
+  -- retry_ticket은 재고를 차감하기 "전에" 오늘 한도를 먼저 확인 -> 한도 초과면
+  -- 아이템을 잃지 않고 그대로 거부됨.
+  if v_subcategory = 'retry_ticket' then
+    select dra.extra_allowed into v_current_extra
+    from public.daily_retry_allowance dra
+    where dra.user_id = v_user and dra.game_id = p_game_id and dra.reward_date = v_today;
+
+    if coalesce(v_current_extra, 0) >= v_max_extra_per_day then
+      raise exception 'RETRY_LIMIT_REACHED';
+    end if;
+  end if;
+
   select quantity into v_qty from public.user_inventory
   where user_id = v_user and item_id = p_item_id
   for update;
 
   if v_qty is null or v_qty <= 0 then
     raise exception 'ITEM_NOT_OWNED';
-  end if;
-
-  if v_subcategory = 'retry_ticket' and p_game_id is null then
-    raise exception 'GAME_ID_REQUIRED';
   end if;
 
   update public.user_inventory
@@ -367,7 +383,7 @@ begin
     insert into public.daily_retry_allowance (user_id, game_id, reward_date, extra_allowed)
     values (v_user, p_game_id, v_today, 1)
     on conflict (user_id, game_id, reward_date)
-    do update set extra_allowed = public.daily_retry_allowance.extra_allowed + 1;
+    do update set extra_allowed = least(v_max_extra_per_day, public.daily_retry_allowance.extra_allowed + 1);
   end if;
 
   select quantity into v_qty from public.user_inventory

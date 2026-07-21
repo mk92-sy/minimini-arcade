@@ -226,6 +226,11 @@ create trigger scores_notify_trigger
 -- p_order: 'asc'면 낮을수록 좋음(반응속도 등), 'desc'면 높을수록 좋음.
 -- ─────────────────────────────────────────────────────────────
 
+-- ⚠️ 반환 컬럼 구성(OUT 파라미터)이 예전 배포본과 다르면 `create or replace`가
+-- "cannot change return type" 에러로 막힙니다. 매번 안전하게 재실행할 수 있도록
+-- 먼저 지우고 새로 만듭니다.
+drop function if exists public.get_my_rank(text, uuid, text);
+
 create or replace function public.get_my_rank(p_game_id text, p_user_id uuid, p_order text default 'desc')
 returns table (rank bigint, total bigint, best_score numeric)
 language sql
@@ -257,6 +262,8 @@ $$;
 grant execute on function public.get_my_rank(text, uuid, text) to anon, authenticated;
 
 -- 상위 N위 리더보드 (get_my_rank와 동일하게 한 사람의 베스트 기록만 집계)
+drop function if exists public.get_leaderboard_top(text, text, int);
+
 create or replace function public.get_leaderboard_top(p_game_id text, p_order text default 'desc', p_limit int default 10)
 returns table (user_id uuid, nickname text, score numeric)
 language sql
@@ -348,9 +355,14 @@ alter table public.coin_transactions add constraint coin_transactions_type_check
     'daily_rank_top3', 'daily_rank_top2', 'daily_rank_top1'
   ));
 
--- 게임당 하루 1회: 플레이 보상
+-- 게임당 하루 1회(기본) + 재도전권 사용 횟수만큼 추가: 플레이 보상.
+-- claim_seq로 "이 게임/이 날짜의 몇 번째 지급인지"를 못박아서, 같은 슬롯에
+-- 동시 요청이 들어와도 유니크 제약이 중복 지급을 막아줍니다(멱등).
+alter table public.coin_transactions add column if not exists claim_seq int not null default 1;
+
+drop index if exists coin_tx_daily_unique;
 create unique index if not exists coin_tx_daily_unique
-  on public.coin_transactions (user_id, game_id, reward_date)
+  on public.coin_transactions (user_id, game_id, reward_date, claim_seq)
   where type = 'daily_play';
 
 -- 게임당 하루 1회: 광고 보너스
@@ -380,26 +392,46 @@ as $$
 declare
   v_user uuid := auth.uid();
   v_today date := (now() at time zone 'Asia/Seoul')::date;
+  v_claimed_count int;
+  v_extra_allowed int;
+  v_max_claims int;
 begin
   if v_user is null then
     raise exception 'NOT_AUTHENTICATED';
   end if;
 
-  -- 출석(플레이) 보상: 하루 1코인, 게임당 1회.
-  -- 1/2/3위 보상은 더 이상 여기서 즉시 지급하지 않습니다 - run_daily_rank_payout()이
+  -- 출석(플레이) 보상: 하루 기본 1코인 + 재도전권으로 늘어난 만큼 추가로 1코인씩,
+  -- 게임당·등록당 1회. 즉 재도전권을 써서 오늘 두 번째로 랭킹에 등록해도
+  -- 똑같이 1코인이 지급됩니다(최대 = 1 + daily_retry_allowance.extra_allowed).
+  -- 1/2/3위 보상은 여기서 지급하지 않습니다 - run_daily_rank_payout()이
   -- 매일 자정에 전날 23:00까지의 랭킹을 기준으로 일괄 지급합니다.
-  begin
-    insert into public.coin_transactions (user_id, game_id, type, amount, reward_date)
-    values (v_user, p_game_id, 'daily_play', 1, v_today);
-    update public.profiles set coins = coins + 1 where id = v_user;
-    insert into public.notifications (user_id, type, game_id, amount)
-    values (v_user, 'daily_play_reward', p_game_id, 1);
-    award_type := 'daily_play';
-    amount := 1;
-    return next;
-  exception when unique_violation then
-    null; -- 오늘 이미 받음
-  end;
+  select count(*) into v_claimed_count
+  from public.coin_transactions
+  where user_id = v_user and game_id = p_game_id and reward_date = v_today and type = 'daily_play';
+
+  select coalesce(extra_allowed, 0) into v_extra_allowed
+  from public.daily_retry_allowance
+  where user_id = v_user and game_id = p_game_id and reward_date = v_today;
+
+  v_max_claims := 1 + coalesce(v_extra_allowed, 0);
+  -- ⚠️ daily_retry_allowance 테이블은 supabase/add_store.sql에서 만들어집니다.
+  -- 재도전권 기능 자체가 add_store.sql 실행을 전제로 하므로, 이 함수도
+  -- add_store.sql까지 실행된 뒤에 호출된다는 전제로 작성돼 있습니다.
+
+  if v_claimed_count < v_max_claims then
+    begin
+      insert into public.coin_transactions (user_id, game_id, type, amount, reward_date, claim_seq)
+      values (v_user, p_game_id, 'daily_play', 1, v_today, v_claimed_count + 1);
+      update public.profiles set coins = coins + 1 where id = v_user;
+      insert into public.notifications (user_id, type, game_id, amount)
+      values (v_user, 'daily_play_reward', p_game_id, 1);
+      award_type := 'daily_play';
+      amount := 1;
+      return next;
+    exception when unique_violation then
+      null; -- 동시 요청으로 같은 슬롯이 이미 채워짐 (안전장치, 중복 지급 방지)
+    end;
+  end if;
 
   return;
 end;

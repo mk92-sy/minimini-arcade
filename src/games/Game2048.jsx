@@ -5,8 +5,11 @@ import SubmitScoreForm from '../components/common/SubmitScoreForm.jsx'
 import ShareButton from '../components/common/ShareButton.jsx'
 import LikeButton from '../components/common/LikeButton.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
+import { fetchInventory, useConsumable } from '../lib/store.js'
 import { games } from '../data/games.js'
 import usePageTitle from '../hooks/usePageTitle.js'
+
+const UNDO_TOKEN_ITEM_ID = 'undo_token'
 
 const GAME_ID = '2048'
 const meta = games.find((g) => g.id === GAME_ID)
@@ -164,7 +167,7 @@ function highestTile(tiles) {
 
 export default function Game2048() {
   usePageTitle(meta.title)
-  const { openAuthModal } = useAuth()
+  const { user, openAuthModal } = useAuth()
 
   const tileIdRef = useRef(1)
   const getNextId = () => (tileIdRef.current += 1)
@@ -182,6 +185,27 @@ export default function Game2048() {
   const [gameOver, setGameOver] = useState(false)
   const [leaderboardRefreshSignal, setLeaderboardRefreshSignal] = useState(0)
 
+  // "되돌리기 1회" 아이템(undo_token) 연동. 직전 한 수만 되돌릴 수 있게 마지막
+  // 이동 직전 상태 하나만 들고 있어요(스택이 아님) — 아이템 설명("마지막 이동을
+  // 한 번 취소")과 맞춰서 딱 한 단계만 되돌립니다.
+  const [undoTokenQty, setUndoTokenQty] = useState(0)
+  const [prevMoveState, setPrevMoveState] = useState(null) // { tiles, score } | null
+  const [undoStatus, setUndoStatus] = useState('idle') // idle | busy
+
+  useEffect(() => {
+    if (!user) {
+      setUndoTokenQty(0)
+      return undefined
+    }
+    let cancelled = false
+    fetchInventory(user.id).then((inventory) => {
+      if (!cancelled) setUndoTokenQty(inventory[UNDO_TOKEN_ITEM_ID] ?? 0)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [user])
+
   const touchStartRef = useRef(null)
 
   const handleMove = useCallback(
@@ -189,6 +213,9 @@ export default function Game2048() {
       if (gameOver || !MOVE_DIRECTIONS.includes(direction)) return
       const { tiles: movedTiles, moved, scoreGained } = move(tiles, direction)
       if (!moved) return
+
+      // 되돌리기용으로 "이동을 적용하기 직전" 상태를 저장 (한 단계만 기억)
+      setPrevMoveState({ tiles, score })
 
       const withNewTile = spawnTile(movedTiles, getNextId)
       setTiles(withNewTile)
@@ -198,8 +225,24 @@ export default function Game2048() {
         setGameOver(true)
       }
     },
-    [tiles, gameOver],
+    [tiles, score, gameOver],
   )
+
+  const handleUndo = async () => {
+    if (undoStatus === 'busy' || !prevMoveState || undoTokenQty <= 0) return
+    setUndoStatus('busy')
+
+    const { data, error } = await useConsumable(UNDO_TOKEN_ITEM_ID)
+
+    setUndoStatus('idle')
+    if (error) return
+
+    setUndoTokenQty(data.remaining_quantity)
+    setTiles(prevMoveState.tiles)
+    setScore(prevMoveState.score)
+    setGameOver(false)
+    setPrevMoveState(null) // 한 단계만 되돌릴 수 있어서, 되돌린 뒤엔 다시 새 이동을 해야 다음 되돌리기가 가능
+  }
 
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -238,6 +281,7 @@ export default function Game2048() {
     setTiles(buildStartingTiles())
     setScore(0)
     setGameOver(false)
+    setPrevMoveState(null)
   }
 
   const best = useMemo(() => highestTile(tiles), [tiles])
@@ -292,9 +336,31 @@ export default function Game2048() {
               ))}
             </div>
 
+            {!gameOver && undoTokenQty > 0 && prevMoveState && (
+              <button
+                type="button"
+                className="game2048__undo-button"
+                onClick={handleUndo}
+                disabled={undoStatus === 'busy'}
+                title="되돌리기 아이템으로 마지막 이동을 취소해요"
+              >
+                ↩️ 되돌리기 {undoTokenQty}
+              </button>
+            )}
+
             {gameOver && (
               <div className="game2048__overlay">
                 <p className="game2048__overlay-text">게임 오버</p>
+                {undoTokenQty > 0 && prevMoveState && (
+                  <button
+                    type="button"
+                    className="game2048__undo-button game2048__undo-button--overlay"
+                    onClick={handleUndo}
+                    disabled={undoStatus === 'busy'}
+                  >
+                    ↩️ 되돌리기 사용하고 계속하기 ({undoTokenQty}개)
+                  </button>
+                )}
                 <button type="button" className="game2048__restart-button" onClick={restart}>
                   다시 시작
                 </button>
