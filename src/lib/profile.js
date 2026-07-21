@@ -42,7 +42,12 @@ export async function ensureProfile(user) {
 }
 
 async function createProfile(user) {
-  const provider = user.app_metadata?.provider === 'kakao' ? 'kakao' : 'google'
+  const provider =
+    user.app_metadata?.provider === 'kakao'
+      ? 'kakao'
+      : user.app_metadata?.provider === 'email'
+        ? 'email'
+        : 'google'
 
   for (let attempt = 0; attempt < MAX_NICKNAME_RETRIES; attempt += 1) {
     const nickname = generateNickname(provider)

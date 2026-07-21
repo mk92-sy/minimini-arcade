@@ -8,6 +8,11 @@ const AuthContext = createContext(null)
 
 const UNREAD_POLL_INTERVAL = 45 * 1000
 
+// "일반로그인"(아이디/비밀번호) 전용 가상 도메인. 실제로 메일이 오가지 않고,
+// supabase auth가 이메일 형식만 요구하기 때문에 아이디 뒤에 붙여서 사용해요.
+// supabase/add_master_account.sql에서 계정을 만들 때도 이 도메인을 그대로 씁니다.
+const ADMIN_LOGIN_EMAIL_DOMAIN = '@mini-arcade.local'
+
 export function AuthProvider({ children }) {
   const [session, setSession] = useState(null)
   const [profile, setProfile] = useState(null)
@@ -144,6 +149,39 @@ export function AuthProvider({ children }) {
     return supabase.auth.signOut()
   }, [])
 
+  /**
+   * "일반로그인" 탭 전용. 운영자가 SQL로 직접 만들어둔 계정(예: master0323)만
+   * 로그인할 수 있어요 — signUp을 아예 호출하지 않으므로 누구도 이 화면에서
+   * 스스로 회원가입은 할 수 없습니다. 아이디는 내부적으로 고정 가상 도메인을
+   * 붙여 이메일 형태로만 변환해서 supabase auth에 넘겨요(실제 메일 발송 없음).
+   */
+  const signInWithId = useCallback(async (id, password) => {
+    if (!supabase) {
+      return { error: new Error('Supabase가 연결되어 있지 않습니다.') }
+    }
+
+    const trimmedId = id.trim()
+    if (!trimmedId || !password) {
+      const err = new Error('아이디와 비밀번호를 입력해주세요.')
+      setAuthError(err.message)
+      return { error: err }
+    }
+
+    setAuthError('')
+    const { error } = await supabase.auth.signInWithPassword({
+      email: `${trimmedId}${ADMIN_LOGIN_EMAIL_DOMAIN}`,
+      password,
+    })
+
+    if (error) {
+      const message = '아이디 또는 비밀번호가 올바르지 않아요.'
+      setAuthError(message)
+      return { error: new Error(message) }
+    }
+
+    return { error: null }
+  }, [])
+
   const changeNickname = useCallback(
     async (nextNickname) => {
       if (!session?.user) {
@@ -270,6 +308,7 @@ export function AuthProvider({ children }) {
     clearAuthError: () => setAuthError(''),
     signInWithGoogle,
     signInWithKakao,
+    signInWithId,
     signOut,
     changeNickname,
     deleteAccount,

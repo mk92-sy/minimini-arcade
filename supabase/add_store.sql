@@ -150,7 +150,7 @@ create or replace function public.scores_enforce_daily_limit()
 returns trigger as $$
 declare
   existing_count int;
-  extra_allowed int;
+  v_extra_allowed int;
   v_kst_time time;
   v_kst_date date;
 begin
@@ -167,11 +167,11 @@ begin
     and user_id = new.user_id
     and (created_at at time zone 'Asia/Seoul')::date = v_kst_date;
 
-  select coalesce(extra_allowed, 0) into extra_allowed
-  from public.daily_retry_allowance
-  where user_id = new.user_id and game_id = new.game_id and reward_date = v_kst_date;
+  select coalesce(dra.extra_allowed, 0) into v_extra_allowed
+  from public.daily_retry_allowance dra
+  where dra.user_id = new.user_id and dra.game_id = new.game_id and dra.reward_date = v_kst_date;
 
-  if existing_count >= (1 + coalesce(extra_allowed, 0)) then
+  if existing_count >= (1 + coalesce(v_extra_allowed, 0)) then
     raise exception 'DAILY_LIMIT_REACHED' using errcode = 'P0001';
   end if;
 
