@@ -10,7 +10,9 @@ export async function fetchStoreItems() {
 
   const { data, error } = await supabase
     .from('store_items')
-    .select('id, category, subcategory, name, description, price, stackable, icon, color_hex, sort_order')
+    .select(
+      'id, category, subcategory, name, description, price, discount_percent, stackable, icon, color_hex, sort_order',
+    )
     .eq('active', true)
     .order('sort_order', { ascending: true })
 

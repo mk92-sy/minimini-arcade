@@ -19,6 +19,14 @@ const EQUIP_SLOT_BY_SUBCATEGORY = {
 
 const RETRY_GAME_OPTIONS = games.filter((g) => g.implemented);
 
+// 정가(item.price)에서 할인율(discount_percent)만큼 뺀 실제 결제가.
+// 서버(purchase_store_item)도 동일한 공식(반올림)으로 계산해서 차감하므로 항상 일치해요.
+function getEffectivePrice(item) {
+  const discount = item.discount_percent ?? 0;
+  if (discount <= 0) return item.price;
+  return Math.round((item.price * (100 - discount)) / 100);
+}
+
 function purchaseErrorMessage(error) {
   const msg = error?.message ?? "";
   if (msg.includes("INSUFFICIENT_COINS")) return "코인이 부족해요.";
@@ -35,19 +43,37 @@ function useErrorMessage(error) {
 }
 
 function ItemPreview({ item }) {
+  const discount = item.discount_percent ?? 0;
+  const badge = discount > 0 && (
+    <span className="store-item__discount-badge" aria-label={`${discount}% 할인`}>
+      -{discount}%
+    </span>
+  );
+
   if (item.subcategory === "nickname_color") {
-    return <span className="store-item__preview" style={{ background: item.color_hex }} aria-hidden="true" />;
+    return (
+      <span className="store-item__preview-wrap">
+        {badge}
+        <span className="store-item__preview" style={{ background: item.color_hex }} aria-hidden="true" />
+      </span>
+    );
   }
   if (item.icon) {
     return (
-      <span className="store-item__preview store-item__preview--icon" aria-hidden="true">
-        {item.icon}
+      <span className="store-item__preview-wrap">
+        {badge}
+        <span className="store-item__preview store-item__preview--icon" aria-hidden="true">
+          {item.icon}
+        </span>
       </span>
     );
   }
   return (
-    <span className="store-item__preview store-item__preview--border" aria-hidden="true">
-      ✦
+    <span className="store-item__preview-wrap">
+      {badge}
+      <span className="store-item__preview store-item__preview--border" aria-hidden="true">
+        ✦
+      </span>
     </span>
   );
 }
@@ -115,7 +141,11 @@ export default function Store() {
   );
 
   const cartTotal = useMemo(
-    () => cart.reduce((sum, entry) => sum + (itemById[entry.itemId]?.price ?? 0) * entry.quantity, 0),
+    () =>
+      cart.reduce((sum, entry) => {
+        const item = itemById[entry.itemId];
+        return sum + (item ? getEffectivePrice(item) : 0) * entry.quantity;
+      }, 0),
     [cart, itemById],
   );
 
@@ -271,7 +301,13 @@ export default function Store() {
                           <p className="store-item__name">{item.name}</p>
                           <p className="store-item__desc">{item.description}</p>
                           <p className="store-item__price">
-                            <IconCoin width="14" height="14" /> {item.price.toLocaleString("ko-KR")}
+                            {item.discount_percent > 0 && (
+                              <span className="store-item__price-original">
+                                {item.price.toLocaleString("ko-KR")}
+                              </span>
+                            )}
+                            <IconCoin width="14" height="14" />{" "}
+                            {getEffectivePrice(item).toLocaleString("ko-KR")}
                           </p>
                         </div>
 
@@ -331,7 +367,7 @@ export default function Store() {
                               {item.name} × {entry.quantity}
                             </span>
                             <span className="store-cart__subtotal">
-                              {(item.price * entry.quantity).toLocaleString("ko-KR")}
+                              {(getEffectivePrice(item) * entry.quantity).toLocaleString("ko-KR")}
                             </span>
                             <button
                               type="button"
