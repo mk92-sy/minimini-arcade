@@ -400,9 +400,9 @@ begin
     raise exception 'NOT_AUTHENTICATED';
   end if;
 
-  -- 출석(플레이) 보상: 하루 기본 1코인 + 재도전권으로 늘어난 만큼 추가로 1코인씩,
+  -- 출석(플레이) 보상: 하루 기본 10코인 + 재도전권으로 늘어난 만큼 추가로 10코인씩,
   -- 게임당·등록당 1회. 즉 재도전권을 써서 오늘 두 번째로 랭킹에 등록해도
-  -- 똑같이 1코인이 지급됩니다(최대 = 1 + daily_retry_allowance.extra_allowed).
+  -- 똑같이 10코인이 지급됩니다(최대 = 10 * (1 + daily_retry_allowance.extra_allowed)).
   -- 1/2/3위 보상은 여기서 지급하지 않습니다 - run_daily_rank_payout()이
   -- 매일 자정에 전날 23:00까지의 랭킹을 기준으로 일괄 지급합니다.
   select count(*) into v_claimed_count
@@ -421,12 +421,12 @@ begin
   if v_claimed_count < v_max_claims then
     begin
       insert into public.coin_transactions (user_id, game_id, type, amount, reward_date, claim_seq)
-      values (v_user, p_game_id, 'daily_play', 1, v_today, v_claimed_count + 1);
-      update public.profiles set coins = coins + 1 where id = v_user;
+      values (v_user, p_game_id, 'daily_play', 10, v_today, v_claimed_count + 1);
+      update public.profiles set coins = coins + 10 where id = v_user;
       insert into public.notifications (user_id, type, game_id, amount)
-      values (v_user, 'daily_play_reward', p_game_id, 1);
+      values (v_user, 'daily_play_reward', p_game_id, 10);
       award_type := 'daily_play';
-      amount := 1;
+      amount := 10;
       return next;
     exception when unique_violation then
       null; -- 동시 요청으로 같은 슬롯이 이미 채워짐 (안전장치, 중복 지급 방지)

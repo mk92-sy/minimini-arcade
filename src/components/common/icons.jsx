@@ -124,6 +124,29 @@ export function IconStore(props) {
   )
 }
 
+export function IconGift(props) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      width="22"
+      height="22"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+      {...props}
+    >
+      <rect x="3" y="8" width="18" height="4" rx="1" />
+      <path d="M12 8v13" />
+      <path d="M19 12v7a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1v-7" />
+      <path d="M12 8c-1.2-3-3-4-4.2-3.4C6.4 5.2 7.6 8 12 8Z" />
+      <path d="M12 8c1.2-3 3-4 4.2-3.4C17.6 5.2 16.4 8 12 8Z" />
+    </svg>
+  )
+}
+
 export function IconBell(props) {
   return (
     <svg

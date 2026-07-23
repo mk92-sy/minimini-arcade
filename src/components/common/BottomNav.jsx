@@ -1,9 +1,10 @@
 import { Link, useLocation } from 'react-router-dom'
-import { IconBell, IconGamepad, IconSettings, IconStore } from './icons.jsx'
+import { IconBell, IconGamepad, IconGift, IconSettings, IconStore } from './icons.jsx'
 import { useAuth } from '../../context/AuthContext.jsx'
 
 const TABS = [
   { key: 'games', label: '게임', to: '/', Icon: IconGamepad, isActive: (p) => p === '/' || p.startsWith('/game/') },
+  { key: 'events', label: '이벤트', to: '/events', Icon: IconGift, isActive: (p) => p.startsWith('/events') },
   { key: 'store', label: '상점', to: '/store', Icon: IconStore, isActive: (p) => p.startsWith('/store') },
   {
     key: 'notifications',

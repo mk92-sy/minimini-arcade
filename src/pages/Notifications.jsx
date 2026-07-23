@@ -32,6 +32,8 @@ function buildMessage(n) {
       return `${formatMonthDay(n.reward_date)} ${gameTitle(n.game_id)} ${n.rank}위를 달성하여 축하 보상이 지급되었습니다. (+${n.amount})`;
     case "admin_broadcast":
       return n.message || "운영자로부터 새 공지가 도착했어요.";
+    case "event_reward":
+      return `이벤트 출석 보상이 지급되었습니다. (+${n.amount})`;
     default:
       return "새 알림이 있어요.";
   }

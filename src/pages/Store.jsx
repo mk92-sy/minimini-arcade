@@ -302,12 +302,9 @@ export default function Store() {
                           <p className="store-item__desc">{item.description}</p>
                           <p className="store-item__price">
                             {item.discount_percent > 0 && (
-                              <span className="store-item__price-original">
-                                {item.price.toLocaleString("ko-KR")}
-                              </span>
+                              <span className="store-item__price-original">{item.price.toLocaleString("ko-KR")}</span>
                             )}
-                            <IconCoin width="14" height="14" />{" "}
-                            {getEffectivePrice(item).toLocaleString("ko-KR")}
+                            <IconCoin width="14" height="14" /> {getEffectivePrice(item).toLocaleString("ko-KR")}
                           </p>
                         </div>
 
@@ -351,73 +348,6 @@ export default function Store() {
                   })}
                 </div>
               )}
-
-              <div className="store-page__footer">
-                <div className="store-cart">
-                  <p className="store-cart__title">🛒 장바구니</p>
-                  {cart.length === 0 && <p className="store-page__empty">담은 아이템이 없어요.</p>}
-                  {cart.length > 0 && (
-                    <ul className="store-cart__list">
-                      {cart.map((entry) => {
-                        const item = itemById[entry.itemId];
-                        if (!item) return null;
-                        return (
-                          <li key={entry.itemId} className="store-cart__row">
-                            <span className="store-cart__name">
-                              {item.name} × {entry.quantity}
-                            </span>
-                            <span className="store-cart__subtotal">
-                              {(getEffectivePrice(item) * entry.quantity).toLocaleString("ko-KR")}
-                            </span>
-                            <button
-                              type="button"
-                              className="store-cart__remove"
-                              onClick={() => removeFromCart(entry.itemId)}
-                              aria-label="장바구니에서 제거"
-                            >
-                              ×
-                            </button>
-                          </li>
-                        );
-                      })}
-                    </ul>
-                  )}
-
-                  {checkoutStatus === "error" && <p className="store-cart__error">{checkoutError}</p>}
-                  {checkoutStatus === "done" && (
-                    <p className="store-cart__success">구매가 완료됐어요! "내 아이템"에서 확인해보세요.</p>
-                  )}
-                </div>
-
-                {cart.length > 0 && (
-                  <div className="store-cart__footer">
-                    <div className="store-page__balance">
-                      <span className="store-page__balance-label">총 금액</span>
-                      <IconCoin width="16" height="16" />
-                      <span className="store-page__balance-value">{cartTotal.toLocaleString("ko-KR")}</span>
-                    </div>
-                    <button
-                      type="button"
-                      className="store-cart__checkout-button"
-                      onClick={handleCheckout}
-                      disabled={checkoutStatus === "processing" || coins < cartTotal}
-                    >
-                      {!user ? "로그인하고 구매하기" : checkoutStatus === "processing" ? "구매 중..." : "구매하기"}
-                    </button>
-                  </div>
-                )}
-
-                <div className="store-page__balance">
-                  <p className="store-page__balance-label">보유 코인</p>
-                  <IconCoin width="16" height="16" />
-                  <p className="store-page__balance-value">{user ? coins.toLocaleString("ko-KR") : "-"}</p>
-                  {!user && (
-                    <button type="button" className="store-page__login-button" onClick={openAuthModal}>
-                      로그인하고 확인하기
-                    </button>
-                  )}
-                </div>
-              </div>
             </>
           )}
 
@@ -488,6 +418,75 @@ export default function Store() {
             </div>
           )}
         </div>
+
+        {tab !== "inventory" && (
+          <div className="store-page__footer">
+            <div className="store-cart">
+              <p className="store-cart__title">🛒 장바구니</p>
+              {cart.length === 0 && <p className="store-page__empty">담은 아이템이 없어요.</p>}
+              {cart.length > 0 && (
+                <ul className="store-cart__list">
+                  {cart.map((entry) => {
+                    const item = itemById[entry.itemId];
+                    if (!item) return null;
+                    return (
+                      <li key={entry.itemId} className="store-cart__row">
+                        <span className="store-cart__name">
+                          {item.name} × {entry.quantity}
+                        </span>
+                        <span className="store-cart__subtotal">
+                          {(getEffectivePrice(item) * entry.quantity).toLocaleString("ko-KR")}
+                        </span>
+                        <button
+                          type="button"
+                          className="store-cart__remove"
+                          onClick={() => removeFromCart(entry.itemId)}
+                          aria-label="장바구니에서 제거"
+                        >
+                          ×
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+
+              {checkoutStatus === "error" && <p className="store-cart__error">{checkoutError}</p>}
+              {checkoutStatus === "done" && (
+                <p className="store-cart__success">구매가 완료됐어요! "내 아이템"에서 확인해보세요.</p>
+              )}
+            </div>
+
+            {cart.length > 0 && (
+              <div className="store-cart__footer">
+                <div className="store-page__balance">
+                  <span className="store-page__balance-label">총 금액</span>
+                  <IconCoin width="16" height="16" />
+                  <span className="store-page__balance-value">{cartTotal.toLocaleString("ko-KR")}</span>
+                </div>
+                <button
+                  type="button"
+                  className="store-cart__checkout-button"
+                  onClick={handleCheckout}
+                  disabled={checkoutStatus === "processing" || coins < cartTotal}
+                >
+                  {!user ? "로그인하고 구매하기" : checkoutStatus === "processing" ? "구매 중..." : "구매하기"}
+                </button>
+              </div>
+            )}
+
+            <div className="store-page__balance">
+              <p className="store-page__balance-label">보유 코인</p>
+              <IconCoin width="16" height="16" />
+              <p className="store-page__balance-value">{user ? coins.toLocaleString("ko-KR") : "-"}</p>
+              {!user && (
+                <button type="button" className="store-page__login-button" onClick={openAuthModal}>
+                  로그인하고 확인하기
+                </button>
+              )}
+            </div>
+          </div>
+        )}
       </div>
     </>
   );

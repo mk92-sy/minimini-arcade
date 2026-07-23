@@ -2,6 +2,8 @@ import { Routes, Route } from 'react-router-dom'
 import Home from './pages/Home.jsx'
 import GamePlaceholder from './pages/GamePlaceholder.jsx'
 import Store from './pages/Store.jsx'
+import Events from './pages/Events.jsx'
+import EventDetail from './pages/EventDetail.jsx'
 import Notifications from './pages/Notifications.jsx'
 import Settings from './pages/Settings.jsx'
 import ReactionGame from './games/ReactionGame.jsx'
@@ -45,6 +47,8 @@ export default function App() {
           <Route path="/game/typing" element={<TypingGame />} />
           <Route path="/game/:id" element={<GamePlaceholder />} />
           <Route path="/store" element={<Store />} />
+          <Route path="/events" element={<Events />} />
+          <Route path="/events/:id" element={<EventDetail />} />
           <Route path="/notifications" element={<Notifications />} />
           <Route path="/settings" element={<Settings />} />
         </Routes>

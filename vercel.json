@@ -2,6 +2,8 @@
   "rewrites": [
     { "source": "/game/:path*", "destination": "/index.html" },
     { "source": "/store", "destination": "/index.html" },
+    { "source": "/events", "destination": "/index.html" },
+    { "source": "/events/:path*", "destination": "/index.html" },
     { "source": "/notifications", "destination": "/index.html" },
     { "source": "/settings", "destination": "/index.html" }
   ],
